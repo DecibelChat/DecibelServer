@@ -13,6 +13,11 @@ chatRooms: Dict[
 ] = {}
 
 
+def close_room_if_empty(room_id: str):
+    if room_id in chatRooms and len(chatRooms[room_id]) == 0:
+        closed_room = chatRooms.pop(room_id)
+
+
 def prune_all():
     for room_id in chatRooms:
         prune_room(room_id)
@@ -25,9 +30,13 @@ def prune_room(room_id: str):
     for connection_id in remove:
         removed_connection = chatRooms[room_id].pop(connection_id)
 
+    close_room_if_empty(room_id)
+
 
 def prune_connection(room_id: str, connection_id: Tuple[str, int]):
     removed_connection = chatRooms[room_id].pop(connection_id)
+
+    close_room_if_empty(room_id)
 
 
 async def wss_handler(websocket: websockets.server.WebSocketServerProtocol, path: str):
@@ -59,8 +68,12 @@ async def wss_handler(websocket: websockets.server.WebSocketServerProtocol, path
 
             print("done")
         except Exception as e:
-            prune_all()
-            print(e)
+            if "room_id" in locals() and "connection_id" in locals():
+                prune_connection(room_id, connection_id)
+            elif "room_id" in locals():
+                prune_room(room_id)
+            else:
+                prune_all()
             break
 
 
