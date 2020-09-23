@@ -17,5 +17,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: echo "::add-path::/home/runner/.local/bin"
 
-      - run: cmake . -DCMAKE_BUILD_TYPE=${{ matrix.build_mode }}
-      - run: cmake --build . --config ${{ matrix.build_mode }}
+      - name: Configure Conan
+        run: |
+          conan profile new default --detect 
+          conan profile update settings.compiler.libcxx=libstdc++11 default
+
+      - name: Generate
+        run: cmake . -DCMAKE_BUILD_TYPE=${{ matrix.build_mode }}
+      - name: Build
+        run: cmake --build . --config ${{ matrix.build_mode }}
