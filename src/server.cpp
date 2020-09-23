@@ -12,15 +12,15 @@ namespace websocket_server
 
   WSS::WSS(const Parameters &params)
   {
-    using namespace websocketpp::lib::placeholders;
     using websocketpp::lib::bind;
 
     server_.init_asio();
 
-    server_.set_message_handler(bind(&WSS::message_handler, this, _1, _2));
-    server_.set_http_handler(bind(&WSS::http_handler, this, _1));
-    server_.set_close_handler(bind(&WSS::remove_client_from_room, this, _1));
-    server_.set_tls_init_handler(websocketpp::lib::bind(&WSS::tls_init_handler, this, _1, params.key_file, params.cert_file));
+    server_.set_message_handler([this](auto handle, auto message) { message_handler(handle, message); });
+    server_.set_http_handler([this](auto handle) { http_handler(handle); });
+    server_.set_close_handler([this](auto handle) { remove_client_from_room(handle); });
+    server_.set_tls_init_handler(
+        [this, params](auto handle) { return tls_init_handler(handle, params.key_file, params.cert_file); });
 
     server_.listen(params.port);
     server_.start_accept();

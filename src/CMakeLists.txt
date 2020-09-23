@@ -38,10 +38,7 @@ target_compile_features(server
   PRIVATE 
     cxx_std_20
 )
-# target_compile_options(server 
-#   PRIVATE
-#   $<$<CONFIG:Debug>:-fstandalone-debug>
-# )
+
 target_link_libraries(server PRIVATE 
   cxxopts::cxxopts
   fmt::fmt
