@@ -9,5 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: pip install conan
+      
+      - name: Get Conan
+        run: |
+          pip install wheel setuptools
+          pip install conan --upgrade
+      # - name: Fix Path on Ubuntu
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: echo "::add-path::/home/runner/.local/bin"
+
       - run: cmake . -DCMAKE_BUILD_TYPE=${{ matrix.build_mode }}
       - run: cmake --build . --config ${{ matrix.build_mode }}
