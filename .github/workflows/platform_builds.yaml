@@ -1,0 +1,72 @@
+on: push
+jobs:
+  test:
+    strategy:
+      matrix:
+        build_mode: [Release]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # build_mode: [Release, Debug]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Clang for C++20 compiler on Linux
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          DISTRO=$(lsb_release -sc)
+          REPO="deb http://apt.llvm.org/$DISTRO/ llvm-toolchain-$DISTRO main"
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo add-apt-repository "${REPO}"
+          sudo apt update
+          sudo apt install -y \
+            libllvm-12-ocaml-dev \
+            libllvm12 \
+            llvm-12 \
+            llvm-12-dev \
+            llvm-12-doc \
+            llvm-12-examples \
+            llvm-12-runtime \
+            clang-12 \
+            clang-tools-12 \
+            clang-12-doc \
+            libclang-common-12-dev \
+            libclang-12-dev \
+            libclang1-12 \
+            clang-format-12 \
+            clangd-12 \
+            libomp-12-dev
+          echo "::set-env name=CC::clang-12"
+          echo "::set-env name=CXX::clang++-12"
+
+      - name: Set Default Compiler on macOS
+        if: contains(matrix.os, 'macos')
+        run: sudo xcode-select -s /Applications/Xcode_12.2.app/Contents/Developer
+
+      - name: Get Conan
+        run: |
+          pip install -U wheel setuptools
+          pip install -U conan
+
+      - name: Fix Path on Ubuntu
+        if: contains(matrix.os, 'ubuntu')
+        run: echo "::add-path::/home/runner/.local/bin"
+
+      - name: Create Conan Profile
+        run: conan profile new default --detect
+
+      - name: Set C++11 ABI on Linux
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          conan profile update settings.compiler.libcxx=libstdc++11 default
+          conan config init
+          sed -i 's/"8", "9", "10"\]/"8", "9", "10", "11", "12"\]/g' ~/.conan/settings.yml
+
+      - name: Fix macOS conan zlib bug
+        if: contains(matrix.os, 'macos')
+        run: conan profile update settings.compiler.version=11.0 default
+
+      - name: Generate
+        run: cmake . -DCMAKE_BUILD_TYPE=${{ matrix.build_mode }}
+
+      - name: Build
+        run: cmake --build . --config ${{ matrix.build_mode }}
