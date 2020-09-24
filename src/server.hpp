@@ -1,10 +1,12 @@
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <map>
 #include <set>
+#include <thread>
 #include <unordered_map>
 
 namespace websocket_server
@@ -17,12 +19,15 @@ namespace websocket_server
 
     fs::path cert_file;
     fs::path key_file;
+
+    bool verbose;
   };
 
   class WSS
   {
   public:
     WSS(const Parameters &params);
+    ~WSS();
 
     void start();
 
@@ -53,5 +58,8 @@ namespace websocket_server
     server_type server_;
     rooms_container_type rooms_;
     client_lookup_type client_mapping_;
+
+    std::jthread debug_logger_;
+    std::atomic<bool> run_debug_logger_;
   };
 } // namespace websocket_server

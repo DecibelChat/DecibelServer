@@ -1,16 +1,28 @@
 #include "server.hpp"
 
+#include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
+#include <chrono>
 #include <utility>
+
+template <>
+struct fmt::formatter</* websocket_server::connection_type*/ websocketpp::connection_hdl> : formatter<void *>
+{
+  template <typename FormatContext>
+  auto format(/* websocket_server::connection_type*/ websocketpp::connection_hdl handle, FormatContext &ctx)
+  {
+    return fmt::formatter<void *>::format(handle.lock().get(), ctx);
+  }
+};
 
 namespace websocket_server
 {
   using json                = nlohmann::json;
   constexpr auto empty_room = "";
 
-  WSS::WSS(const Parameters &params)
+  WSS::WSS(const Parameters &params) : run_debug_logger_(params.verbose)
   {
     using websocketpp::lib::bind;
 
@@ -24,6 +36,27 @@ namespace websocket_server
 
     server_.listen(params.port);
     server_.start_accept();
+
+    debug_logger_ = std::jthread{[this]() {
+      constexpr auto interval = std::chrono::seconds{1};
+      while (run_debug_logger_.load(std::memory_order_acquire))
+      {
+        fmt::print("[{:%F %T}] Rooms:\n", fmt::localtime(std::time(nullptr)));
+
+        for (const auto &room : rooms_)
+        {
+          fmt::print("  [{}] : ", room.first);
+
+          fmt::print("{{{}}}\n", fmt::join(room.second, ", "));
+        }
+        std::this_thread::sleep_for(interval);
+      }
+    }};
+  }
+
+  WSS::~WSS()
+  {
+    run_debug_logger_.store(false, std::memory_order_release);
   }
 
   void WSS::start()

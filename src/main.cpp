@@ -26,6 +26,9 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
     options.add_options()("c,certfile",
                           "<required> The file containing the SSL certificate",
                           cxxopts::value<decltype(Parameters::cert_file)>(params.cert_file));
+    options.add_options()("verbose",
+                          "If true, server will print verbose debugging information to the console.",
+                          cxxopts::value<decltype(Parameters::verbose)>(params.verbose)->default_value("false"));
 
     auto result = options.parse(argc, argv);
 
@@ -35,7 +38,7 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
       std::exit(exit_code);
     };
 
-    auto handle_required_argument = [&result, print_help](const std::string& argument) {
+    auto handle_required_argument = [&result, print_help](const std::string &argument) {
       if (result.count(argument) == 0)
       {
         fmt::print(stderr, fg(fmt::color::orange_red), "required argument \"{}\" is missing\n", argument);
