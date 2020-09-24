@@ -34,7 +34,7 @@ jobs:
         if: contains(matrix.os, 'ubuntu')
         run: CC=clang-11 CXX=clang++11 cmake . -DCMAKE_BUILD_TYPE=${{ matrix.build_mode }}
       - name: Generate
-        if: ! contains(matrix.os , 'ubuntu')
+        if: contains(matrix.os , 'macos') || contains(matrix.os, 'windows')
         run: cmake . -DCMAKE_BUILD_TYPE=${{ matrix.build_mode }}
 
       - name: Build
