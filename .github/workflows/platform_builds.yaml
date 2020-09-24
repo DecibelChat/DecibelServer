@@ -31,10 +31,10 @@ jobs:
         run: |
           DISTRO=$(lsb_release -sc)
           REPO="deb http://apt.llvm.org/$DISTRO/ llvm-toolchain-$DISTRO main"
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-          add-apt-repository "${REPO}"
-          apt update
-          apt install -y \
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo add-apt-repository "${REPO}"
+          sudo apt update
+          sudo apt install -y \
             libllvm-12-ocaml-dev \
             libllvm12 \
             llvm-12 \
