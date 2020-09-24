@@ -40,7 +40,10 @@ jobs:
 
       - name: Set Default Compiler on macOS
         if: contains(matrix.os, 'macos')
-        run: ls /Applications
+        run: | 
+          ls -l /Applications
+          sudo xcode-select -s /Applications/Xcode_12.app/Contents/Developer
+          clang -v
 
       - name: Get Conan
         run: |
