@@ -3,9 +3,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest]
         build_mode: [Release]
-        # os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         # build_mode: [Release, Debug]
     runs-on: ${{ matrix.os }}
     steps:
@@ -43,6 +42,7 @@ jobs:
         run: |
           pip install -U wheel setuptools
           pip install -U conan
+          
       - name: Fix Path on Ubuntu
         if: contains(matrix.os, 'ubuntu')
         run: echo "::add-path::/home/runner/.local/bin"
