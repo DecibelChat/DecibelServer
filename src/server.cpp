@@ -18,6 +18,18 @@ struct fmt::formatter</* websocket_server::connection_type*/ websocketpp::connec
   }
 };
 
+namespace std
+{
+  template <>
+  struct hash</* websocket_server::connection_type*/ websocketpp::connection_hdl>
+  {
+    size_t operator()(const websocketpp::connection_hdl &handle) const
+    {
+      return std::hash<std::string>()(fmt::format("{}", handle));
+    }
+  };
+} // namespace std
+
 namespace websocket_server
 {
   using json                = nlohmann::json;
@@ -86,13 +98,24 @@ namespace websocket_server
 
     auto parsed_data = json::parse(message->get_payload());
 
-    fmt::print("{}\n", parsed_data.dump(2));
+    if (run_debug_logger_)
+    {
+      fmt::print("{}\n", parsed_data.dump(2));
+    }
 
     auto room_id = parsed_data.at("code").get<room_id_type>();
 
     auto [current_client, added_to_room] = add_client_to_room(room_id, handle);
 
     const auto &current_room = rooms_.at(room_id);
+
+    parsed_data["peer_id"] = std::get<1>(client_mapping_[*current_client]);
+    message->set_payload(parsed_data.dump());
+
+    if (run_debug_logger_)
+    {
+      fmt::print("{}\n", parsed_data.dump(2));
+    }
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
@@ -107,13 +130,28 @@ namespace websocket_server
   {
     auto &current_room = rooms_[room_id];
 
-    client_mapping_[handle] = room_id;
-    return current_room.insert(handle);
+    auto result = current_room.insert(handle);
+
+    if (result.second)
+    {
+      std::get<0>(client_mapping_[handle]) = room_id;
+
+      if (run_debug_logger_)
+      {
+        auto connection = server_.get_con_from_hdl(handle);
+        auto uuid       = std::get<1>(client_mapping_[handle]);
+
+        fmt::print(
+            "Added connection: [resource {} uri {}, uuid {}]\n", connection->get_resource(), connection->get_uri()->str(), uuid);
+      }
+    }
+
+    return result;
   }
 
   void WSS::remove_client_from_room(connection_type handle)
   {
-    auto room_id = client_mapping_.at(handle);
+    auto [room_id, client_uuid] = client_mapping_.at(handle);
 
     fmt::print("removed client {} from room {}", handle.lock().get(), room_id);
     rooms_[room_id].erase(handle);
@@ -145,7 +183,7 @@ namespace websocket_server
     namespace asio                           = websocketpp::lib::asio;
     tls_context_pointer_type context_pointer = websocketpp::lib::make_shared<tls_context_type>(asio::ssl::context::sslv23);
 
-    client_mapping_.insert({handle, empty_room});
+    client_mapping_.insert({handle, {empty_room, uuid_generator_()}});
     try
     {
       context_pointer->set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2 |
