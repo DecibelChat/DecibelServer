@@ -1,6 +1,7 @@
 #include "server.hpp"
 
 #include <fmt/chrono.h>
+#include <fmt/color.h>
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
@@ -37,11 +38,17 @@ namespace websocket_server
     server_.listen(params.port);
     server_.start_accept();
 
+    if (params.verbose)
+    {
+      fmt::print(fg(fmt::color::lime_green), "initialized wss server on port: {}\n", params.port);
+    }
+
     debug_logger_ = thread_type{[this]() {
       constexpr auto interval = std::chrono::seconds{1};
       while (run_debug_logger_.load(std::memory_order_acquire))
       {
-        fmt::print("[{:%F %T}] Rooms:\n", fmt::localtime(std::time(nullptr)));
+        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        fmt::print("[{:%F %T}] Rooms:\n", fmt::localtime(now));
 
         for (const auto &room : rooms_)
         {
@@ -65,9 +72,12 @@ namespace websocket_server
 
   void WSS::start()
   {
+    if (run_debug_logger_)
     {
-      server_.run();
+      fmt::print(fg(fmt::color::cyan), "starting server.\n");
     }
+
+    server_.run();
   }
 
   void WSS::message_handler(connection_type handle, message_pointer_type message)
