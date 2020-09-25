@@ -45,6 +45,12 @@ namespace websocket_server
     using rooms_container_type = std::unordered_map<room_id_type, room_type>;
     using client_lookup_type   = std::map<connection_type, room_id_type, connection_comparator>;
 
+#ifdef __cpp_lib_jthread
+    using thread_type = std::jthread;
+#else
+    using thread_type = std::thread;
+#endif
+
     void message_handler(connection_type handle, message_pointer_type message);
 
     std::pair<room_type::iterator, bool> add_client_to_room(const room_id_type &room_id, connection_type handle);
@@ -59,7 +65,7 @@ namespace websocket_server
     rooms_container_type rooms_;
     client_lookup_type client_mapping_;
 
-    std::jthread debug_logger_;
+    thread_type debug_logger_;
     std::atomic<bool> run_debug_logger_;
   };
 } // namespace websocket_server

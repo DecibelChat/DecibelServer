@@ -37,7 +37,7 @@ namespace websocket_server
     server_.listen(params.port);
     server_.start_accept();
 
-    debug_logger_ = std::jthread{[this]() {
+    debug_logger_ = thread_type{[this]() {
       constexpr auto interval = std::chrono::seconds{1};
       while (run_debug_logger_.load(std::memory_order_acquire))
       {
@@ -57,6 +57,10 @@ namespace websocket_server
   WSS::~WSS()
   {
     run_debug_logger_.store(false, std::memory_order_release);
+
+#ifndef __cpp_lib_jthread
+    debug_logger_.join();
+#endif
   }
 
   void WSS::start()
