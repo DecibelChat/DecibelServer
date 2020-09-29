@@ -29,19 +29,30 @@ if (NOT ${websocketpp_FOUND})
   find_package(websocketpp REQUIRED)
 endif()
 
-add_executable(server 
-  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+add_library(websocketsecure_server
   ${CMAKE_CURRENT_SOURCE_DIR}/server.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/uuid.cpp
 )
 
-target_compile_features(server 
-  PRIVATE 
+target_compile_features(websocketsecure_server
+  PUBLIC
     cxx_std_20
+)
+
+target_link_libraries(websocketsecure_server 
+PUBLIC
+  websocketpp::websocketpp
+PRIVATE 
+  fmt::fmt
+  nlohmann_json::nlohmann_json
+)
+
+add_executable(server 
+  ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
 
 target_link_libraries(server PRIVATE 
   cxxopts::cxxopts
   fmt::fmt
-  nlohmann_json::nlohmann_json
-  websocketpp::websocketpp
+  websocketsecure_server
 )
