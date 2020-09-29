@@ -40,6 +40,7 @@ namespace websocket_server
     using websocketpp::lib::bind;
 
     server_.init_asio();
+    server_.set_reuse_addr(true);
 
     server_.set_message_handler([this](auto handle, auto message) { message_handler(handle, message); });
     server_.set_http_handler([this](auto handle) { http_handler(handle); });
@@ -141,8 +142,7 @@ namespace websocket_server
         auto connection = server_.get_con_from_hdl(handle);
         auto uuid       = std::get<1>(client_mapping_[handle]);
 
-        fmt::print(
-            "Added connection: [resource {} uri {}, uuid {}]\n", connection->get_resource(), connection->get_uri()->str(), uuid);
+        fmt::print("Added connection: [room: {}, uuid: {}]\n", room_id, uuid);
       }
     }
 
@@ -153,7 +153,11 @@ namespace websocket_server
   {
     auto [room_id, client_uuid] = client_mapping_.at(handle);
 
-    fmt::print("removed client {} from room {}", handle.lock().get(), room_id);
+    if (run_debug_logger_)
+    {
+      fmt::print("removed client {} from room {}", client_uuid, room_id);
+    }
+
     rooms_[room_id].erase(handle);
     client_mapping_.erase(handle);
 
