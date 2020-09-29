@@ -169,7 +169,7 @@ namespace websocket_server
     current_room.erase(handle);
     client_mapping_.erase(handle);
 
-    auto serialized_message = message.get<std::string>();
+    auto serialized_message = message.dump();
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
       server_.send(*peer, serialized_message, websocketpp::frame::opcode::TEXT);
