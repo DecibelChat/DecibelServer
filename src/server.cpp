@@ -151,15 +151,29 @@ namespace websocket_server
 
   void WSS::remove_client_from_room(connection_type handle)
   {
+    constexpr auto uuid_key           = "peer_id";
+    constexpr auto message_type_key   = "message_type";
+    constexpr auto message_type_value = "DELETE";
+
     auto [room_id, client_uuid] = client_mapping_.at(handle);
+    json message;
+    message[uuid_key]         = client_uuid;
+    message[message_type_key] = message_type_value;
 
     if (run_debug_logger_)
     {
       fmt::print("removed client {} from room {}", client_uuid, room_id);
     }
 
-    rooms_[room_id].erase(handle);
+    auto &current_room = rooms_.at(room_id);
+    current_room.erase(handle);
     client_mapping_.erase(handle);
+
+    auto serialized_message = message.get<std::string>();
+    for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
+    {
+      server_.send(*peer, serialized_message, websocketpp::frame::opcode::TEXT);
+    }
 
     auto room_closed = close_if_empty(room_id);
   }
