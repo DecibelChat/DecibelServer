@@ -19,7 +19,7 @@ namespace websocket_server
                                                                                {MessageType::DELETE, "DELETE"}};
 
   auto generate_reverse_dict = [](auto dict) {
-    using input_type = decltype(dict);
+    using input_type = typename std::remove_const<typename std::remove_reference<decltype(dict)>::type>::type;
     std::unordered_map<typename input_type::mapped_type, typename input_type::key_type> inverse_dict;
 
     for (auto [k, v] : dict)
