@@ -160,13 +160,15 @@ namespace websocket_server
 
   void WSS::remove_client_from_room(connection_type handle)
   {
-    constexpr auto uuid_key = peer_id_key;
+    constexpr auto uuid_key       = peer_id_key;
+    constexpr auto delete_message = "delete";
 
     const auto &client      = client_mapping_.at(handle);
     const auto &client_uuid = client.id();
     const auto &room_id     = client.room();
 
-    json message = {{uuid_key}, {client_uuid}, {message_type_key, message_type_to_string.at(MessageType::REMOVE_CLIENT)}};
+    json message = {
+        {uuid_key, client_uuid}, {message_type_key, message_type_to_string.at(MessageType::SERVER)}, {data_key, delete_message}};
 
     if (run_debug_logger_)
     {
