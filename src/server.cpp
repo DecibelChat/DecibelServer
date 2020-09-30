@@ -11,10 +11,10 @@
 #include <utility>
 
 template <>
-struct fmt::formatter</* websocket_server::connection_type*/ websocketpp::connection_hdl> : formatter<void *>
+struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<void *>
 {
   template <typename FormatContext>
-  auto format(/* websocket_server::connection_type*/ websocketpp::connection_hdl handle, FormatContext &ctx)
+  auto format(websocket_server::WSS::connection_type handle, FormatContext &ctx)
   {
     return fmt::formatter<void *>::format(handle.lock().get(), ctx);
   }
@@ -23,7 +23,7 @@ struct fmt::formatter</* websocket_server::connection_type*/ websocketpp::connec
 namespace std
 {
   template <>
-  struct hash</* websocket_server::connection_type*/ websocketpp::connection_hdl>
+  struct hash<websocket_server::WSS::connection_type>
   {
     size_t operator()(const websocketpp::connection_hdl &handle) const
     {

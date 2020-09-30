@@ -35,9 +35,10 @@ namespace websocket_server
 
     void start();
 
+    using connection_type = websocketpp::connection_hdl;
+
   private:
     using server_type              = websocketpp::server<websocketpp::config::asio_tls>;
-    using connection_type          = websocketpp::connection_hdl;
     using connection_comparator    = std::owner_less<connection_type>;
     using tls_context_type         = websocketpp::lib::asio::ssl::context;
     using tls_context_pointer_type = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
