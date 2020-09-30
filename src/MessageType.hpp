@@ -10,13 +10,13 @@ namespace websocket_server
     SDP,
     CANDIDATE,
     SERVER,
-    DELETE
+    REMOVE_CLIENT // note: 'DELETE' is overriden by a define in Windows system files.
   };
 
   const std::unordered_map<MessageType, std::string> message_type_to_string = {{MessageType::SDP, "SDP"},
                                                                                {MessageType::CANDIDATE, "CANDIDATE"},
                                                                                {MessageType::SERVER, "SERVER"},
-                                                                               {MessageType::DELETE, "DELETE"}};
+                                                                               {MessageType::REMOVE_CLIENT, "DELETE"}};
 
   auto generate_reverse_dict = [](auto dict) {
     using input_type = typename std::remove_const<typename std::remove_reference<decltype(dict)>::type>::type;

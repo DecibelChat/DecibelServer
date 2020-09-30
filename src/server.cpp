@@ -166,7 +166,7 @@ namespace websocket_server
     const auto &client_uuid = client.id();
     const auto &room_id     = client.room();
 
-    json message = {{uuid_key}, {client_uuid}, {message_type_key, message_type_to_string.at(MessageType::DELETE)}};
+    json message = {{uuid_key}, {client_uuid}, {message_type_key, message_type_to_string.at(MessageType::REMOVE_CLIENT)}};
 
     if (run_debug_logger_)
     {
