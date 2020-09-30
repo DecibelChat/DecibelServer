@@ -32,8 +32,7 @@ namespace std
 
 namespace websocket_server
 {
-  using json                = nlohmann::json;
-  constexpr auto empty_room = "";
+  using json = nlohmann::json;
 
   WSS::WSS(const Parameters &params) : run_debug_logger_(params.verbose)
   {
@@ -110,7 +109,7 @@ namespace websocket_server
 
     const auto &current_room = rooms_.at(room_id);
 
-    parsed_data["peer_id"] = std::get<1>(client_mapping_[*current_client]);
+    parsed_data["peer_id"] = client_mapping_[*current_client].id();
     message->set_payload(parsed_data.dump());
 
     if (run_debug_logger_)
@@ -135,12 +134,12 @@ namespace websocket_server
 
     if (result.second)
     {
-      std::get<0>(client_mapping_[handle]) = room_id;
+      client_mapping_[handle].assign_room(room_id);
 
       if (run_debug_logger_)
       {
         auto connection = server_.get_con_from_hdl(handle);
-        auto uuid       = std::get<1>(client_mapping_[handle]);
+        auto uuid       = client_mapping_[handle].id();
 
         fmt::print("Added connection: [room: {}, uuid: {}]\n", room_id, uuid);
       }
@@ -155,7 +154,10 @@ namespace websocket_server
     constexpr auto message_type_key   = "message_type";
     constexpr auto message_type_value = "DELETE";
 
-    auto [room_id, client_uuid] = client_mapping_.at(handle);
+    const auto &client      = client_mapping_.at(handle);
+    const auto &client_uuid = client.id();
+    const auto &room_id     = client.room();
+
     json message;
     message[uuid_key]         = client_uuid;
     message[message_type_key] = message_type_value;
@@ -201,7 +203,7 @@ namespace websocket_server
     namespace asio                           = websocketpp::lib::asio;
     tls_context_pointer_type context_pointer = websocketpp::lib::make_shared<tls_context_type>(asio::ssl::context::sslv23);
 
-    client_mapping_.insert({handle, {empty_room, uuid_generator_()}});
+    client_mapping_.try_emplace(handle);
     try
     {
       context_pointer->set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2 |

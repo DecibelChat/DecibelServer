@@ -30,6 +30,7 @@ if (NOT ${websocketpp_FOUND})
 endif()
 
 add_library(websocketsecure_server
+  ${CMAKE_CURRENT_SOURCE_DIR}/ClientInfo.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/server.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/uuid.cpp
 )

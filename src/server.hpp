@@ -1,7 +1,9 @@
+#pragma once
+
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
 
-#include "uuid.hpp"
+#include "ClientInfo.h"
 
 #include <atomic>
 #include <cstdint>
@@ -42,11 +44,12 @@ namespace websocket_server
     using message_type             = websocketpp::config::asio::message_type;
     using message_pointer_type     = message_type::ptr;
 
-    using connection_id_type   = std::string;
-    using room_id_type         = std::string;
+    using client_type          = ClientInfo;
+    using room_id_type         = client_type::room_id_type;
     using room_type            = std::set<connection_type, connection_comparator>;
     using rooms_container_type = std::unordered_map<room_id_type, room_type>;
-    using client_lookup_type   = std::map<connection_type, std::tuple<room_id_type, connection_id_type>, connection_comparator>;
+
+    using client_lookup_type = std::map<connection_type, client_type, connection_comparator>;
 
 #ifdef __cpp_lib_jthread
     using thread_type = std::jthread;
@@ -67,7 +70,6 @@ namespace websocket_server
     server_type server_;
     rooms_container_type rooms_;
     client_lookup_type client_mapping_;
-    uuid::UUID4 uuid_generator_;
 
     thread_type debug_logger_;
     std::atomic<bool> run_debug_logger_;
