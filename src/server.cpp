@@ -1,5 +1,7 @@
 #include "server.hpp"
 
+#include "MessageType.hpp"
+
 #include <fmt/chrono.h>
 #include <fmt/color.h>
 #include <fmt/format.h>
@@ -32,7 +34,10 @@ namespace std
 
 namespace websocket_server
 {
-  using json = nlohmann::json;
+  using json                      = nlohmann::json;
+  constexpr auto message_type_key = "message_type";
+  constexpr auto peer_id_key      = "peer_id";
+  constexpr auto data_key         = "content";
 
   WSS::WSS(const Parameters &params) : run_debug_logger_(params.verbose)
   {
@@ -60,13 +65,13 @@ namespace websocket_server
       while (run_debug_logger_.load(std::memory_order_acquire))
       {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        fmt::print("[{:%F %T}] Rooms:\n", fmt::localtime(now));
+        fmt::print(fg(fmt::color::violet), "[{:%F %T}] Rooms:\n", fmt::localtime(now));
 
         for (const auto &room : rooms_)
         {
-          fmt::print("  [{}] : ", room.first);
+          fmt::print(fg(fmt::color::violet), "  [{}] : ", room.first);
 
-          fmt::print("{{{}}}\n", fmt::join(room.second, ", "));
+          fmt::print(fg(fmt::color::violet), "{{{}}}\n", fmt::join(room.second, ", "));
         }
         std::this_thread::sleep_for(interval);
       }
@@ -100,7 +105,7 @@ namespace websocket_server
 
     if (run_debug_logger_)
     {
-      fmt::print("{}\n", parsed_data.dump(2));
+      fmt::print(fg(fmt::color::yellow), "{}\n", parsed_data.dump(2));
     }
 
     auto room_id = parsed_data.at("code").get<room_id_type>();
@@ -109,13 +114,8 @@ namespace websocket_server
 
     const auto &current_room = rooms_.at(room_id);
 
-    parsed_data["peer_id"] = client_mapping_[*current_client].id();
+    parsed_data[peer_id_key] = client_mapping_[*current_client].id();
     message->set_payload(parsed_data.dump());
-
-    if (run_debug_logger_)
-    {
-      fmt::print("{}\n", parsed_data.dump(2));
-    }
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
@@ -130,18 +130,28 @@ namespace websocket_server
   {
     auto &current_room = rooms_[room_id];
 
+    // add client to room if not already present
     auto result = current_room.insert(handle);
 
     if (result.second)
     {
+      // update internal bookkeeping of client's room
       client_mapping_[handle].assign_room(room_id);
+
+      // notify client of their own UUID
+      json client_reply_message = {{peer_id_key, client_mapping_[handle].id()},
+                                   {message_type_key, message_type_to_string.at(MessageType::SERVER)},
+                                   {data_key, "your id"}};
+      server_.send(handle, client_reply_message.dump(), websocketpp::frame::opcode::TEXT);
 
       if (run_debug_logger_)
       {
         auto connection = server_.get_con_from_hdl(handle);
         auto uuid       = client_mapping_[handle].id();
 
-        fmt::print("Added connection: [room: {}, uuid: {}]\n", room_id, uuid);
+        fmt::print(fg(fmt::color::dark_turquoise), "Added connection: [room: {}, uuid: {}]\n", room_id, uuid);
+
+        fmt::print(fg(fmt::color::aquamarine), "{}\n", client_reply_message.dump(2));
       }
     }
 
@@ -150,31 +160,26 @@ namespace websocket_server
 
   void WSS::remove_client_from_room(connection_type handle)
   {
-    constexpr auto uuid_key           = "peer_id";
-    constexpr auto message_type_key   = "message_type";
-    constexpr auto message_type_value = "DELETE";
+    constexpr auto uuid_key = peer_id_key;
 
     const auto &client      = client_mapping_.at(handle);
     const auto &client_uuid = client.id();
     const auto &room_id     = client.room();
 
-    json message;
-    message[uuid_key]         = client_uuid;
-    message[message_type_key] = message_type_value;
+    json message = {{uuid_key}, {client_uuid}, {message_type_key, message_type_to_string.at(MessageType::DELETE)}};
 
     if (run_debug_logger_)
     {
-      fmt::print("removed client {} from room {}", client_uuid, room_id);
+      fmt::print(fg(fmt::color::dark_turquoise), "removed client {} from room {}\n", client_uuid, room_id);
     }
 
     auto &current_room = rooms_.at(room_id);
     current_room.erase(handle);
     client_mapping_.erase(handle);
 
-    auto serialized_message = message.dump();
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
-      server_.send(*peer, serialized_message, websocketpp::frame::opcode::TEXT);
+      server_.send(*peer, message.dump(), websocketpp::frame::opcode::TEXT);
     }
 
     auto room_closed = close_if_empty(room_id);
@@ -215,7 +220,7 @@ namespace websocket_server
     }
     catch (const std::exception &e)
     {
-      fmt::print("Exception thrown while initializing TLS:\n{}", e.what());
+      fmt::print(fg(fmt::color::orange_red), "Exception thrown while initializing TLS:\n{}", e.what());
     }
 
     return context_pointer;
