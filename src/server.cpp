@@ -163,21 +163,23 @@ namespace websocket_server
     constexpr auto uuid_key       = peer_id_key;
     constexpr auto delete_message = "delete";
 
-    const auto &client      = client_mapping_.at(handle);
-    const auto &client_uuid = client.id();
-    const auto &room_id     = client.room();
+    const auto &client = client_mapping_.at(handle);
+    auto client_uuid   = std::move(client.id());
+    auto room_id       = std::move(client.room());
 
     json message = {
         {uuid_key, client_uuid}, {message_type_key, message_type_to_string.at(MessageType::SERVER)}, {data_key, delete_message}};
 
-    if (run_debug_logger_)
-    {
-      fmt::print(fg(fmt::color::dark_turquoise), "removed client {} from room {}\n", client_uuid, room_id);
-    }
-
     auto &current_room = rooms_.at(room_id);
     current_room.erase(handle);
     client_mapping_.erase(handle);
+
+    if (run_debug_logger_)
+    {
+      fmt::print(fg(fmt::color::dark_turquoise), "removed client {} from room {}\n", client_uuid, room_id);
+
+      fmt::print(fg(fmt::color::aquamarine), "{}\n", message.dump(2));
+    }
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
