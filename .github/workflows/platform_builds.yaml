@@ -59,7 +59,7 @@ jobs:
         run: |
           conan profile update settings.compiler.libcxx=libstdc++11 default
           conan config init
-          sed -i 's/"8", "9", "10"\]/"8", "9", "10", "11", "12"\]/g' ~/.conan/settings.yml
+          python3 -c 'import yaml;from pathlib import Path;f=open(Path("~/.conan/settings.yml").expanduser());y=yaml.safe_load(f);y["compiler"]["clang"]["version"].append("12") if "12" not in y["compiler"]["clang"]["version"] else list();f.close();f=open(Path("~/.conan/settings.yml").expanduser(), "w");yaml.dump(y,f);f.close()'
 
       - name: Fix macOS conan zlib bug
         if: contains(matrix.os, 'macos')
