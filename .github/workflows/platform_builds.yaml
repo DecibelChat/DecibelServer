@@ -1,11 +1,13 @@
-on: push
+on: [push, pull_request]
 jobs:
   test:
     strategy:
       matrix:
         build_mode: [Release]
         os: [ubuntu-latest, macos-latest, windows-latest]
-        # build_mode: [Release, Debug]
+        include: 
+          - on: pull_requst
+            build_mode: [Release, Debug]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
