@@ -8,6 +8,7 @@ jobs:
         include: 
           - on: pull_requst
             build_mode: [Release, Debug]
+
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
