@@ -58,9 +58,14 @@ target_compile_features(websocketsecure_server
 target_link_libraries(websocketsecure_server 
 PUBLIC
   websocketpp::websocketpp
-PRIVATE 
+PRIVATE
   fmt::fmt
   nlohmann_json::nlohmann_json
+)
+
+target_compile_options(websocketsecure_server 
+PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:$<$<CONFIG:Debug>:/bigobj>>
 )
 
 add_executable(server 
