@@ -52,3 +52,5 @@ CERT_DIR=</path/to/cert/root>
 sudo chmod 755 -R $CERT_DIR/archive $CERT_DIR/live
 ```
 - remove forwarding of port 80?
+
+*reminder:* may need to change port forwarding settings on both modem and router. Xfinity modem settings can be changed [here](https://internet.xfinity.com/network/advanced-settings/portforwarding).
