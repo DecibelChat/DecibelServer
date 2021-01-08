@@ -32,8 +32,14 @@ namespace websocket_server
   class WSS
   {
   public:
-    WSS(const Parameters &params);
+    explicit WSS(const Parameters &params);
     ~WSS();
+
+    // for now, disable copy and move semantics, because underlying websocketpp::server<> types provide neither ability.
+    WSS(const WSS &)     = delete;
+    WSS(WSS &&) noexcept = delete;
+    WSS &operator=(const WSS &) = delete;
+    WSS &operator=(WSS &&) noexcept = delete;
 
     void start();
 

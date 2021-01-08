@@ -186,9 +186,9 @@ namespace websocket_server
     constexpr auto uuid_key       = peer_id_key;
     constexpr auto delete_message = "delete";
 
-    const auto &client = client_mapping_.at(handle);
-    auto client_uuid   = std::move(client.id());
-    auto room_id       = std::move(client.room());
+    const auto &client      = client_mapping_.at(handle);
+    const auto &client_uuid = client.id();
+    const auto &room_id     = client.room();
 
     json message = {
         {uuid_key, client_uuid}, {message_type_key, message_type_to_string.at(MessageType::SERVER)}, {data_key, delete_message}};
