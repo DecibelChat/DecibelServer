@@ -16,9 +16,9 @@ namespace websocket_server
 
     void assign_room(const room_id_type &room);
 
-    const room_id_type &room() const;
-    const client_id_type &id() const;
-    bool unassigned() const;
+    [[nodiscard]] const room_id_type &room() const;
+    [[nodiscard]] const client_id_type &id() const;
+    [[nodiscard]] bool unassigned() const;
 
   private:
     room_id_type room_;

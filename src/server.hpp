@@ -12,6 +12,7 @@
 #include <set>
 #include <thread>
 #include <unordered_map>
+#include <variant>
 
 namespace websocket_server
 {
@@ -25,20 +26,29 @@ namespace websocket_server
     fs::path key_file;
 
     bool verbose;
+    bool insecure;
   };
 
   class WSS
   {
   public:
-    WSS(const Parameters &params);
+    explicit WSS(const Parameters &params);
     ~WSS();
+
+    // for now, disable copy and move semantics, because underlying websocketpp::server<> types provide neither ability.
+    WSS(const WSS &)     = delete;
+    WSS(WSS &&) noexcept = delete;
+    WSS &operator=(const WSS &) = delete;
+    WSS &operator=(WSS &&) noexcept = delete;
 
     void start();
 
     using connection_type = websocketpp::connection_hdl;
 
   private:
-    using server_type              = websocketpp::server<websocketpp::config::asio_tls>;
+    using insecure_server_type     = websocketpp::server<websocketpp::config::asio>;
+    using secure_server_type       = websocketpp::server<websocketpp::config::asio_tls>;
+    using server_type              = std::variant<insecure_server_type, secure_server_type>;
     using connection_comparator    = std::owner_less<connection_type>;
     using tls_context_type         = websocketpp::lib::asio::ssl::context;
     using tls_context_pointer_type = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
@@ -74,5 +84,6 @@ namespace websocket_server
 
     thread_type debug_logger_;
     std::atomic<bool> run_debug_logger_;
+    bool insecure_;
   };
 } // namespace websocket_server

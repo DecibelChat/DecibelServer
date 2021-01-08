@@ -39,21 +39,42 @@ namespace websocket_server
   constexpr auto peer_id_key      = "peer_id";
   constexpr auto data_key         = "content";
 
-  WSS::WSS(const Parameters &params) : run_debug_logger_(params.verbose)
+  WSS::WSS(const Parameters &params) : run_debug_logger_(params.verbose), insecure_(params.insecure)
   {
     using websocketpp::lib::bind;
 
-    server_.init_asio();
-    server_.set_reuse_addr(true);
+    if (insecure_)
+    {
+      server_.emplace<insecure_server_type>();
+    }
+    else
+    {
+      server_.emplace<secure_server_type>();
+    }
 
-    server_.set_message_handler([this](auto handle, auto message) { message_handler(handle, message); });
-    server_.set_http_handler([this](auto handle) { http_handler(handle); });
-    server_.set_close_handler([this](auto handle) { remove_client_from_room(handle); });
-    server_.set_tls_init_handler(
-        [this, params](auto handle) { return tls_init_handler(handle, params.key_file, params.cert_file); });
+    std::visit([](auto &&server) { server.init_asio(); }, server_);
+    std::visit([](auto &&server) { server.set_reuse_addr(true); }, server_);
 
-    server_.listen(params.port);
-    server_.start_accept();
+    std::visit(
+        [this](auto &&server) {
+          server.set_message_handler([this](auto handle, auto message) { message_handler(handle, message); });
+        },
+        server_);
+    std::visit([this](auto &&server) { server.set_http_handler([this](auto handle) { http_handler(handle); }); }, server_);
+    std::visit([this](auto &&server) { server.set_close_handler([this](auto handle) { remove_client_from_room(handle); }); },
+               server_);
+    std::visit(
+        [this, params](auto &&server) {
+          if constexpr (std::is_same_v<std::decay_t<decltype(server)>, secure_server_type>)
+          {
+            server.set_tls_init_handler(
+                [this, params](auto handle) { return tls_init_handler(handle, params.key_file, params.cert_file); });
+          }
+        },
+        server_);
+
+    std::visit([port = params.port](auto &&server) { server.listen(port); }, server_);
+    std::visit([](auto &&server) { server.start_accept(); }, server_);
 
     if (params.verbose)
     {
@@ -94,12 +115,12 @@ namespace websocket_server
       fmt::print(fg(fmt::color::cyan), "starting server.\n");
     }
 
-    server_.run();
+    std::visit([](auto &&server) { server.run(); }, server_);
   }
 
   void WSS::message_handler(connection_type handle, message_pointer_type message)
   {
-    auto connection = server_.get_con_from_hdl(handle);
+    // auto connection = std::visit([handle](auto &&server) { return server.get_con_from_hdl(handle); }, server_);
 
     auto parsed_data = json::parse(message->get_payload());
 
@@ -121,7 +142,7 @@ namespace websocket_server
     {
       if (current_client != peer)
       {
-        server_.send(*peer, message);
+        std::visit([peer, message](auto &&server) { server.send(*peer, message); }, server_);
       }
     }
   }
@@ -142,12 +163,14 @@ namespace websocket_server
       json client_reply_message = {{peer_id_key, client_mapping_[handle].id()},
                                    {message_type_key, message_type_to_string.at(MessageType::SERVER)},
                                    {data_key, "your id"}};
-      server_.send(handle, client_reply_message.dump(), websocketpp::frame::opcode::TEXT);
+      std::visit([handle, client_reply_message](
+                     auto &&server) { server.send(handle, client_reply_message.dump(), websocketpp::frame::opcode::TEXT); },
+                 server_);
 
       if (run_debug_logger_)
       {
-        auto connection = server_.get_con_from_hdl(handle);
-        auto uuid       = client_mapping_[handle].id();
+        // auto connection = std::visit([handle](auto &&server) { return server.get_con_from_hdl(handle); }, server_);
+        auto uuid = client_mapping_[handle].id();
 
         fmt::print(fg(fmt::color::dark_turquoise), "Added connection: [room: {}, uuid: {}]\n", room_id, uuid);
 
@@ -163,9 +186,9 @@ namespace websocket_server
     constexpr auto uuid_key       = peer_id_key;
     constexpr auto delete_message = "delete";
 
-    const auto &client = client_mapping_.at(handle);
-    auto client_uuid   = std::move(client.id());
-    auto room_id       = std::move(client.room());
+    const auto &client      = client_mapping_.at(handle);
+    const auto &client_uuid = client.id();
+    const auto &room_id     = client.room();
 
     json message = {
         {uuid_key, client_uuid}, {message_type_key, message_type_to_string.at(MessageType::SERVER)}, {data_key, delete_message}};
@@ -183,7 +206,8 @@ namespace websocket_server
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
-      server_.send(*peer, message.dump(), websocketpp::frame::opcode::TEXT);
+      std::visit([peer, message](auto &&server) { server.send(*peer, message.dump(), websocketpp::frame::opcode::TEXT); },
+                 server_);
     }
 
     auto room_closed = close_if_empty(room_id);
@@ -202,9 +226,12 @@ namespace websocket_server
 
   void WSS::http_handler(connection_type handle)
   {
-    auto connection = server_.get_con_from_hdl(handle);
-
-    connection->set_status(websocketpp::http::status_code::accepted);
+    std::visit(
+        [handle](auto &&server) {
+          auto connection = server.get_con_from_hdl(handle);
+          connection->set_status(websocketpp::http::status_code::accepted);
+        },
+        server_);
   }
 
   WSS::tls_context_pointer_type WSS::tls_init_handler(connection_type handle, const fs::path &keyfile, const fs::path &certfile)
