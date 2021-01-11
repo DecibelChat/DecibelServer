@@ -2,12 +2,14 @@ on: [push, pull_request]
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         build_mode: [Release]
         os: [ubuntu-latest, macos-latest, windows-latest]
         include: 
           - on: pull_request
             build_mode: [Release, Debug]
+            os: [ubuntu-latest, macos-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
     steps:
