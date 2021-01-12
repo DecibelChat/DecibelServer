@@ -8,7 +8,7 @@ namespace websocket_server
 
   uuid::UUID4 ClientInfo::uuid_generator_;
 
-  ClientInfo::ClientInfo() : room_(empty_room), id_(uuid_generator_()), x_(0), y_(0), z_(0)
+  ClientInfo::ClientInfo() : room_(empty_room), id_(uuid_generator_()), position_{0, 0, 0}
   {
   }
 
@@ -32,24 +32,22 @@ namespace websocket_server
     return room_ == empty_room;
   }
 
-  bool ClientInfo::update_position(ClientInfo::position_value_type x,
-                                   ClientInfo::position_value_type y,
-                                   ClientInfo::position_value_type z)
+  bool ClientInfo::update_position(ClientInfo::position_type new_position)
   {
-    if (x == x_ && y == y_ && z == z_)
+    if (position_ == new_position)
     {
       return false;
     }
 
-    x_ = x;
-    y_ = y;
-    z_ = z;
-
+    position_ = new_position;
     return true;
   }
 
   ClientInfo::position_value_type ClientInfo::distance(const ClientInfo &other) const
   {
-    return std::hypot(other.x_ - x_, other.y_ - y_, other.z_ - z_);
+    const auto &[x, y, z]                   = position_;
+    const auto &[x_other, y_other, z_other] = other.position_;
+
+    return std::hypot(x_other - x, y_other - y, z_other - z);
   }
 } // namespace websocket_server

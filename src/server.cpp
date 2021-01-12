@@ -318,7 +318,7 @@ namespace websocket_server
 
       log(spdlog::level::trace, fmt::color::yellow, "{}", volume_update);
 
-      if (current_client.update_position(x, y, z))
+      if (current_client.update_position({x, y, z}))
       {
         for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
         {

@@ -3,6 +3,7 @@
 #include "uuid.hpp"
 
 #include <string>
+#include <tuple>
 
 namespace websocket_server
 {
@@ -12,11 +13,12 @@ namespace websocket_server
     using room_id_type        = std::string;
     using client_id_type      = std::string;
     using position_value_type = float;
+    using position_type       = std::tuple<position_value_type, position_value_type, position_value_type>;
 
     ClientInfo();
 
     void assign_room(const room_id_type &room);
-    bool update_position(position_value_type x, position_value_type y, position_value_type z);
+    bool update_position(position_type new_position);
     [[nodiscard]] position_value_type distance(const ClientInfo &other) const;
 
     [[nodiscard]] const room_id_type &room() const;
@@ -27,9 +29,7 @@ namespace websocket_server
     room_id_type room_;
     client_id_type id_;
 
-    position_value_type x_;
-    position_value_type y_;
-    position_value_type z_;
+    position_type position_;
 
     static uuid::UUID4 uuid_generator_;
   };
