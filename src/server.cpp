@@ -170,7 +170,7 @@ namespace websocket_server
         fmt::print(fg(fmt::color::yellow), "{}\n", volume_update.dump(2));
       }
 
-      if (current_client.update_position(x, y, z))
+      if (current_client.update_position({x, y, z}))
       {
         for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
         {
