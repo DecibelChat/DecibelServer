@@ -70,9 +70,13 @@ namespace websocket_server
 
     void message_handler(connection_type handle, message_pointer_type message);
 
+    /* room bookkeeping */
     std::pair<room_type::iterator, bool> add_client_to_room(const room_id_type &room_id, connection_type handle);
     void remove_client_from_room(connection_type handle);
     bool close_if_empty(const room_id_type &room_id);
+
+    /* room environment handling */
+    float calculate_volume(client_type::position_value_type distance) const;
 
     void http_handler(connection_type handle);
 

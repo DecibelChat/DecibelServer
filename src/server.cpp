@@ -129,21 +129,83 @@ namespace websocket_server
       fmt::print(fg(fmt::color::yellow), "{}\n", parsed_data.dump(2));
     }
 
+    auto message_type = parsed_data.at("message_type").get<MessageType>();
+
     auto room_id = parsed_data.at("code").get<room_id_type>();
 
-    auto [current_client, added_to_room] = add_client_to_room(room_id, handle);
-
-    const auto &current_room = rooms_.at(room_id);
-
-    parsed_data[peer_id_key] = client_mapping_[*current_client].id();
-    message->set_payload(parsed_data.dump());
-
-    for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
+    if (message_type == MessageType::SERVER || message_type == MessageType::CANDIDATE)
     {
-      if (current_client != peer)
+      auto [current_client, added_to_room] = add_client_to_room(room_id, handle);
+
+      const auto &current_room = rooms_.at(room_id);
+
+      parsed_data[peer_id_key] = client_mapping_[*current_client].id();
+      message->set_payload(parsed_data.dump());
+
+      for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
       {
-        std::visit([peer, message](auto &&server) { server.send(*peer, message); }, server_);
+        if (current_client != peer)
+        {
+          std::visit([peer, message](auto &&server) { server.send(*peer, message); }, server_);
+        }
       }
+    }
+    else if (message_type == MessageType::POSITION)
+    {
+      const auto &current_room = rooms_.at(room_id);
+      auto &current_client     = client_mapping_[handle];
+
+      auto position = parsed_data.at(data_key).at("position");
+
+      auto x = position.contains("x") ? position.at("x").get<ClientInfo::position_value_type>() : 0.f;
+      auto y = position.contains("y") ? position.at("y").get<ClientInfo::position_value_type>() : 0.f;
+      auto z = position.contains("z") ? position.at("z").get<ClientInfo::position_value_type>() : 0.f;
+
+      json volume_update = {{peer_id_key, current_client.id()},
+                            {message_type_key, message_type_to_string.at(MessageType::VOLUME)},
+                            {data_key, {{"volume", 0.f}}}};
+
+      if (run_debug_logger_)
+      {
+        fmt::print(fg(fmt::color::yellow), "{}\n", volume_update.dump(2));
+      }
+
+      if (current_client.update_position(x, y, z))
+      {
+        for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
+        {
+          if (!connection_comparator()(handle, *peer))
+          {
+            const auto &peer_client = client_mapping_.at(*peer);
+            auto distance           = current_client.distance(peer_client);
+            auto volume             = calculate_volume(distance);
+
+            volume_update[data_key]["volume"] = volume;
+
+            volume_update[peer_id_key] = current_client.id();
+            message->set_payload(volume_update.dump());
+            std::visit([peer, message](auto &&server) { server.send(*peer, message); }, server_);
+            if (run_debug_logger_)
+            {
+              fmt::print(fg(fmt::color::coral), "{}\n", volume_update.dump(2));
+            }
+
+            volume_update[peer_id_key] = peer_client.id();
+            message->set_payload(volume_update.dump());
+            std::visit([handle, message](auto &&server) { server.send(handle, message); }, server_);
+            if (run_debug_logger_)
+            {
+              fmt::print(fg(fmt::color::coral), "{}\n", volume_update.dump(2));
+            }
+          }
+        }
+      }
+    }
+    else
+    {
+      fmt::print(fg(fmt::color::orange_red),
+                 "Unable to handle received message of type MessageType::{}",
+                 message_type_to_string.at(message_type));
     }
   }
 
@@ -186,9 +248,9 @@ namespace websocket_server
     constexpr auto uuid_key       = peer_id_key;
     constexpr auto delete_message = "delete";
 
-    const auto &client      = client_mapping_.at(handle);
-    const auto &client_uuid = client.id();
-    const auto &room_id     = client.room();
+    const auto &client     = client_mapping_.at(handle);
+    const auto client_uuid = client.id();
+    const auto room_id     = client.room();
 
     json message = {
         {uuid_key, client_uuid}, {message_type_key, message_type_to_string.at(MessageType::SERVER)}, {data_key, delete_message}};
@@ -222,6 +284,16 @@ namespace websocket_server
     }
 
     return false;
+  }
+
+  WSS::client_type::position_value_type WSS::calculate_volume(client_type::position_value_type distance) const
+  {
+    /*
+     * This will likely need tweaking for UX, but as a staring point:
+     * - Sound intensity is inversely proportional to the square of distance.
+     * - Output is desired in the format (as governed by HTML video API) to be a fractional value in the range [0,1]
+     */
+    return distance <= 1.f ? 1.f : 1 / (distance * distance);
   }
 
   void WSS::http_handler(connection_type handle)
