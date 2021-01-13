@@ -5,3 +5,6 @@ project(DecibelServer)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/conan.cmake)
 
 add_subdirectory(src)
+
+enable_testing()
+add_subdirectory(test)

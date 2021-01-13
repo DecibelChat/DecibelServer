@@ -71,3 +71,6 @@ jobs:
 
       - name: Build
         run: cmake --build . --config ${{ matrix.build_mode }}
+
+      - name: Run Tests
+        run: ctest -C ${{ matrix.build_mode }}
