@@ -5,19 +5,27 @@ if (NOT ${Catch2_FOUND})
   find_package(Catch2 REQUIRED)
 endif()
 
-add_executable(websocketsecure_server_tests_client_info
-    ${CMAKE_CURRENT_SOURCE_DIR}/client_info.cpp
+add_executable(websocketsecure_server_tests
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests_main.cpp
 )
-target_link_libraries(websocketsecure_server_tests_client_info
+
+target_link_libraries(websocketsecure_server_tests
 PRIVATE
     websocketsecure_server
     Catch2::Catch2
 )
-add_test(NAME websocketsecure_server_tests_client_info COMMAND websocketsecure_server_tests_client_info)
+add_test(NAME websocketsecure_server_tests COMMAND websocketsecure_server_tests)
 
 if(MSVC)
   configure_file(
     ${CMAKE_SOURCE_DIR}/cmake/msvc.runsettings.in
     ${CMAKE_SOURCE_DIR}/msvc.runsettings
   )
+  
+  target_sources(websocketsecure_server_tests
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_client_info.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_uuid.hpp
+  )
+
 endif(MSVC)
