@@ -1,6 +1,7 @@
 #include "ClientInfo.h"
 
 #include <cmath>
+#include <utility>
 
 namespace websocket_server
 {
@@ -34,13 +35,7 @@ namespace websocket_server
 
   bool ClientInfo::update_position(ClientInfo::position_type new_position)
   {
-    if (position_ == new_position)
-    {
-      return false;
-    }
-
-    position_ = new_position;
-    return true;
+    return new_position != std::exchange(position_, new_position);
   }
 
   ClientInfo::position_value_type ClientInfo::distance(const ClientInfo &other) const
