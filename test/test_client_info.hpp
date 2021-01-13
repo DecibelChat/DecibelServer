@@ -1,7 +1,6 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
-
 #include <ClientInfo.h>
+
+#include <catch2/catch.hpp>
 
 TEST_CASE("room assignment", "[ClientInfo]")
 {
@@ -11,6 +10,11 @@ TEST_CASE("room assignment", "[ClientInfo]")
   {
     REQUIRE(client_info.unassigned());
   }
+}
+
+TEST_CASE("distance", "[ClientInfo]")
+{
+  websocket_server::ClientInfo client_info;
 
   SECTION("update position returns true when changed")
   {
