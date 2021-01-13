@@ -8,3 +8,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake)
 
 add_subdirectory(third_party)
 add_subdirectory(src)
+
+if (BUILD_TESTING)
+  add_subdirectory(test)
+endif (BUILD_TESTING)

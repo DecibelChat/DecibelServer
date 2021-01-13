@@ -54,6 +54,12 @@ if (INSECURE_SERVER)
   )
 endif (INSECURE_SERVER)
 
+# TODO: Split public includes out in to include/websocketsecure_server folder
+target_include_directories(websocketsecure_server
+PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 add_executable(server 
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
