@@ -26,7 +26,7 @@ namespace websocket_server
   template <typename BasicJsonType>
   inline void from_json(const BasicJsonType &j, MessageType &message)
   {
-    message = from_string(j);
+    message = from_string(j.get<std::string>());
   }
 
 } // namespace websocket_server
