@@ -7,8 +7,16 @@ find_conan_package(fmt)
 find_conan_package(nlohmann_json)
 find_conan_package(spdlog)
 
+find_package(magic_enum QUIET)
+if (NOT ${magic_enum_FOUND})
+  conan_cmake_install(BUILD missing)
+  
+  find_package(magic_enum REQUIRED)
+endif()
+
 list(APPEND wss_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/ClientInfo.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/MessageType.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/server.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/uuid.cpp
 )
@@ -38,6 +46,7 @@ PUBLIC
   uWebSockets
 PRIVATE
   fmt::fmt
+  magic_enum::magic_enum
   nlohmann_json::nlohmann_json
   spdlog::spdlog
 )

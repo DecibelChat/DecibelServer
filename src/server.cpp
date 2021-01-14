@@ -312,9 +312,8 @@ namespace websocket_server
       auto y = position.contains("y") ? position.at("y").get<ClientInfo::position_value_type>() : 0.f;
       auto z = position.contains("z") ? position.at("z").get<ClientInfo::position_value_type>() : 0.f;
 
-      json volume_update = {{peer_id_key, current_client.id()},
-                            {message_type_key, message_type_to_string.at(MessageType::VOLUME)},
-                            {data_key, {{"volume", 0.f}}}};
+      json volume_update = {
+          {peer_id_key, current_client.id()}, {message_type_key, to_string(MessageType::VOLUME)}, {data_key, {{"volume", 0.f}}}};
 
       log(spdlog::level::trace, fmt::color::yellow, "{}", volume_update);
 
@@ -346,7 +345,7 @@ namespace websocket_server
       log(spdlog::level::warn,
           fmt::color::orange_red,
           "unable to handle received message of type MessageType::{}",
-          message_type_to_string.at(message_type));
+          to_string(message_type));
     }
   }
 
@@ -363,9 +362,8 @@ namespace websocket_server
       client_mapping_[handle].assign_room(room_id);
 
       // notify client of their own UUID
-      json client_reply_message = {{peer_id_key, client_mapping_[handle].id()},
-                                   {message_type_key, message_type_to_string.at(MessageType::SERVER)},
-                                   {data_key, "your id"}};
+      json client_reply_message = {
+          {peer_id_key, client_mapping_[handle].id()}, {message_type_key, to_string(MessageType::SERVER)}, {data_key, "your id"}};
       handle->send(client_reply_message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
 
       user_data(handle) = client_mapping_[handle].id();
@@ -388,8 +386,7 @@ namespace websocket_server
     const auto client_uuid = client.id();
     const auto room_id     = client.room();
 
-    json message = {
-        {uuid_key, client_uuid}, {message_type_key, message_type_to_string.at(MessageType::SERVER)}, {data_key, delete_message}};
+    json message = {{uuid_key, client_uuid}, {message_type_key, to_string(MessageType::SERVER)}, {data_key, delete_message}};
 
     auto &current_room = rooms_.at(room_id);
     current_room.erase(handle);

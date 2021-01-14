@@ -25,6 +25,7 @@ if(MSVC)
   target_sources(websocketsecure_server_tests
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/test_client_info.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_message_type.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_uuid.hpp
   )
 
