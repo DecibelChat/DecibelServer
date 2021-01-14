@@ -15,13 +15,13 @@ namespace websocket_server
 
   MessageType from_string(std::string_view view)
   {
-    try
-    {
-      return *magic_enum::enum_cast<MessageType>(view);
-    }
-    catch (const std::bad_optional_access &e)
+    auto result = magic_enum::enum_cast<MessageType>(view);
+
+    if (!result)
     {
       throw std::out_of_range(fmt::format("No websocket_server::MessageType value for {}", view));
     }
+
+    return *result;
   }
 } // namespace websocket_server
