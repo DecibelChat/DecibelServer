@@ -29,8 +29,16 @@ if (NOT ${websocketpp_FOUND})
   find_package(websocketpp REQUIRED)
 endif()
 
+find_package(magic_enum QUIET)
+if (NOT ${magic_enum_FOUND})
+  conan_cmake_install(BUILD missing)
+  
+  find_package(magic_enum REQUIRED)
+endif()
+
 list(APPEND wss_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/ClientInfo.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/MessageType.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/server.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/uuid.cpp
 )
@@ -60,6 +68,7 @@ PUBLIC
   websocketpp::websocketpp
 PRIVATE
   fmt::fmt
+  magic_enum::magic_enum
   nlohmann_json::nlohmann_json
 )
 
