@@ -4,6 +4,7 @@ if (NOT ${Catch2_FOUND})
   
   find_package(Catch2 REQUIRED)
 endif()
+find_package(nlohmann_json REQUIRED)
 
 add_executable(websocketsecure_server_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/tests_main.cpp
@@ -13,6 +14,7 @@ target_link_libraries(websocketsecure_server_tests
 PRIVATE
     websocketsecure_server
     Catch2::Catch2
+    nlohmann_json::nlohmann_json
 )
 add_test(NAME websocketsecure_server_tests COMMAND websocketsecure_server_tests)
 
