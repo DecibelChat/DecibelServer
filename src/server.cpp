@@ -59,6 +59,8 @@ namespace websocket_server
   {
     server_.ws<user_data_type>("/*",
                                {
+                                   .compression = (compress_outgoing_messages) ? uWS::CompressOptions::SHARED_COMPRESSOR :
+                                                                                 uWS::CompressOptions::DISABLED,
                                    .open = [this](auto ws) { http_handler(ws); },
                                    .message =
                                        [this](auto ws, auto message, auto op_code) {
