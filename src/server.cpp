@@ -50,8 +50,7 @@ namespace websocket_server
       server_([params]() {
         if constexpr (using_TLS)
         {
-          return uWS::SocketContextOptions{.key_file_name  = params.key_file.string().c_str(),
-                                           .cert_file_name = params.cert_file.string().c_str()};
+          return uWS::SocketContextOptions{.key_file_name = params.key_file.c_str(), .cert_file_name = params.cert_file.c_str()};
         }
         return uWS::SocketContextOptions{};
       }()),
@@ -61,7 +60,7 @@ namespace websocket_server
                                {
                                    .compression = (compress_outgoing_messages) ? uWS::CompressOptions::SHARED_COMPRESSOR :
                                                                                  uWS::CompressOptions::DISABLED,
-                                   .open = [this](auto ws) { http_handler(ws); },
+                                   .open        = [this](auto ws) { http_handler(ws); },
                                    .message =
                                        [this](auto ws, auto message, auto op_code) {
                                          if (op_code == uWS::OpCode::TEXT)
