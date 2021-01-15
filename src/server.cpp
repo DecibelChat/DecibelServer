@@ -52,9 +52,11 @@ namespace websocket_server
       run_debug_logger_(params.verbose)
   {
     server_.ws<user_data_type>("/*",
-                               {.open    = [this](auto ws) { http_handler(ws); },
-                                .message = [this](auto ws, auto message, auto op_code) { message_handler(ws, message); },
-                                .close   = [this](auto ws, auto code, auto message) { remove_client_from_room(ws); }});
+                               {
+                                   .open    = [this](auto ws) { http_handler(ws); },
+                                   .message = [this](auto ws, auto message, auto op_code) { message_handler(ws, message); },
+                                   .close   = [this](auto ws, auto code, auto message) { remove_client_from_room(ws); },
+                               });
     server_.listen(params.port, [verbose = params.verbose, port = params.port](auto listen_socket) {
       if (verbose)
       {
