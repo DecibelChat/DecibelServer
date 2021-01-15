@@ -56,8 +56,6 @@ namespace websocket_server
     using connection_type = socket_type *;
 
   private:
-    using user_data_type = std::string;
-    // using connection_comparator = std::owner_less<connection_type>;
     struct connection_comparator
     {
       bool operator()(const connection_type &lhs, const connection_type &rhs) const
@@ -65,12 +63,12 @@ namespace websocket_server
         return lhs->getRemoteAddress() < rhs->getRemoteAddress();
       }
     };
-    // using tls_context_type         = websocketpp::lib::asio::ssl::context;
-    // using tls_context_pointer_type = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
+
     using message_type      = std::string;
     using message_view_type = std::string_view;
 
     using client_type          = ClientInfo;
+    using client_id_type       = client_type::client_id_type;
     using room_id_type         = client_type::room_id_type;
     using room_type            = std::set<connection_type, connection_comparator>;
     using rooms_container_type = std::unordered_map<room_id_type, room_type>;
@@ -97,5 +95,8 @@ namespace websocket_server
 
     thread_type debug_logger_;
     std::atomic<bool> run_debug_logger_;
+
+  public:
+    using user_data_type = client_id_type;
   };
 } // namespace websocket_server
