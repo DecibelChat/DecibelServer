@@ -10,6 +10,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
       - name: Install Clang for C++20 compiler on Linux
         if: contains(matrix.os, 'ubuntu')
