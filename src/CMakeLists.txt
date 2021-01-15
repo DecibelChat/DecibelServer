@@ -5,7 +5,6 @@ option(INSECURE_SERVER "Build a server that does not use SSL. May be useful for 
 find_conan_package(cxxopts)
 find_conan_package(fmt)
 find_conan_package(nlohmann_json)
-# find_conan_package(websocketpp)
 
 list(APPEND wss_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/ClientInfo.cpp
@@ -35,7 +34,6 @@ target_compile_features(websocketsecure_server
 
 target_link_libraries(websocketsecure_server 
 PUBLIC
-  # websocketpp::websocketpp
   uWebSockets
 PRIVATE
   fmt::fmt

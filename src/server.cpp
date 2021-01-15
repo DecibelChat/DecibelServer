@@ -59,8 +59,21 @@ namespace websocket_server
   {
     server_.ws<user_data_type>("/*",
                                {
-                                   .open    = [this](auto ws) { http_handler(ws); },
-                                   .message = [this](auto ws, auto message, auto op_code) { message_handler(ws, message); },
+                                   .open = [this](auto ws) { http_handler(ws); },
+                                   .message =
+                                       [this](auto ws, auto message, auto op_code) {
+                                         if (op_code == uWS::OpCode::TEXT)
+                                         {
+                                           message_handler(ws, message);
+                                         }
+                                         else if (run_debug_logger_)
+                                         {
+                                           fmt::print(fg(fmt::color::orange_red),
+                                                      "ERROR: Cannot handle received message of type: {}\n{}\n",
+                                                      static_cast<int>(op_code),
+                                                      message);
+                                         }
+                                       },
                                    .close =
                                        [this](auto ws, auto code, auto message) {
                                          if (run_debug_logger_)
@@ -170,7 +183,6 @@ namespace websocket_server
 
       if (run_debug_logger_)
       {
-        // auto connection = std::visit([handle](auto &&server) { return server.get_con_from_hdl(handle); }, server_);
         auto uuid = client_mapping_[handle].id();
 
         fmt::print(fg(fmt::color::dark_turquoise), "Added connection: [room: {}, uuid: {}]\n", room_id, uuid);
@@ -233,12 +245,6 @@ namespace websocket_server
                  handle->getRemoteAddress(),
                  handle->getRemoteAddressAsText());
     }
-    // std::visit(
-    //    [handle](auto &&server) {
-    //      auto connection = server.get_con_from_hdl(handle);
-    //      connection->set_status(websocketpp::http::status_code::accepted);
-    //    },
-    //    server_);
   }
 
 } // namespace websocket_server
