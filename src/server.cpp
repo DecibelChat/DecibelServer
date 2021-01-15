@@ -47,15 +47,12 @@ namespace websocket_server
   constexpr auto data_key         = "content";
 
   WSS::WSS(const Parameters &params) :
-      server_([params]() {
+      key_(params.key_file.string()),
+      cert_(params.cert_file.string()),
+      server_([this]() {
         if constexpr (using_TLS)
         {
-          uWS::SocketContextOptions options;
-
-          options.key_file_name  = params.key_file.c_str();
-          options.cert_file_name = params.cert_file.c_str();
-
-          return options;
+          return uWS::SocketContextOptions{.key_file_name = key_.c_str(), .cert_file_name = cert_.c_str()};
         }
         return uWS::SocketContextOptions{};
       }()),

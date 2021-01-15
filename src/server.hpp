@@ -89,6 +89,9 @@ namespace websocket_server
 
     void http_handler(connection_type handle);
 
+    const std::string key_;
+    const std::string cert_;
+
     server_backend_type server_;
     rooms_container_type rooms_;
     client_lookup_type client_mapping_;
