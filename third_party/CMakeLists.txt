@@ -71,6 +71,11 @@ target_include_directories(uSockets
     ${uSockets_ROOT}/src
 )
 
+target_compile_definitions(uSockets
+  PRIVATE
+    $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>
+)
+
 if (USE_OPENSLL AND USE_WOLFSSL)
     message(FATAL_ERROR "USE_OPENSSL and USE_WOLFSSL are mutally exclusive. Both cannot be enabled at the same time!")
 elseif (USE_OPENSSL)
