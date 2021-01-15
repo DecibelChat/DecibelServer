@@ -51,25 +51,28 @@ namespace websocket_server
   private:
     using server_backend_type = uWS::TemplatedApp<using_TLS>;
     using socket_type         = uWS::WebSocket<using_TLS, true>;
+    using message_type        = std::string;
+    using message_view_type   = std::string_view;
+
+    using client_type    = ClientInfo;
+    using client_id_type = client_type::client_id_type;
+    using room_id_type   = client_type::room_id_type;
 
   public:
     using connection_type = socket_type *;
+    using user_data_type  = client_id_type;
+
+    static user_data_type &user_data(connection_type handle);
 
   private:
     struct connection_comparator
     {
       bool operator()(const connection_type &lhs, const connection_type &rhs) const
       {
-        return lhs->getRemoteAddress() < rhs->getRemoteAddress();
+        return user_data(lhs) < user_data(rhs);
       }
     };
 
-    using message_type      = std::string;
-    using message_view_type = std::string_view;
-
-    using client_type          = ClientInfo;
-    using client_id_type       = client_type::client_id_type;
-    using room_id_type         = client_type::room_id_type;
     using room_type            = std::set<connection_type, connection_comparator>;
     using rooms_container_type = std::unordered_map<room_id_type, room_type>;
 
@@ -98,8 +101,5 @@ namespace websocket_server
 
     thread_type debug_logger_;
     std::atomic<bool> run_debug_logger_;
-
-  public:
-    using user_data_type = client_id_type;
   };
 } // namespace websocket_server

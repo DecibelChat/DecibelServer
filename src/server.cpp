@@ -10,20 +10,13 @@
 #include <chrono>
 #include <utility>
 
-websocket_server::WSS::user_data_type &user_data(websocket_server::WSS::connection_type handle)
-{
-  websocket_server::WSS::user_data_type &user_data = *static_cast<websocket_server::WSS::user_data_type *>(handle->getUserData());
-
-  return user_data;
-}
-
 template <>
 struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<std::string>
 {
   template <typename FormatContext>
   auto format(websocket_server::WSS::connection_type handle, FormatContext &ctx)
   {
-    return fmt::formatter<std::string>::format(user_data(handle), ctx);
+    return fmt::formatter<std::string>::format(websocket_server::WSS::user_data(handle), ctx);
   }
 };
 
@@ -34,7 +27,7 @@ namespace std
   {
     size_t operator()(const websocket_server::WSS::connection_type &handle) const
     {
-      return std::hash<std::string>()(user_data(handle));
+      return std::hash<std::string>()(websocket_server::WSS::user_data(handle));
     }
   };
 } // namespace std
@@ -135,6 +128,13 @@ namespace websocket_server
     }
 
     server_.run();
+  }
+
+  WSS::user_data_type &WSS::user_data(connection_type handle)
+  {
+    user_data_type &user_data = *static_cast<user_data_type *>(handle->getUserData());
+
+    return user_data;
   }
 
   void WSS::message_handler(connection_type handle, message_view_type message)
