@@ -4,6 +4,7 @@ fmt/[>=7.1.3]
 libuv/[>=1.40.0]
 nlohmann_json/[>=3.9.1]
 openssl/1.1.1i
+zlib/[>=1.2.11]
 
 [generators]
 cmake_find_package

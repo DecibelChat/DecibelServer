@@ -7,6 +7,7 @@ option(USE_OPENSSL             "Build networking backend with OpenSSL"          
 option(USE_WOLFSSL             "Build networking backend with WolfSSL"                   OFF)
 option(USE_LIBUV               "Build networking backend with libuv as event-loop"       ON)
 option(USE_GCD                 "Build networking backend with libdispatch as event-loop" OFF)
+option(USE_ZLIB                "Build networking backend with zlib compression enabled"  ON)
 option(BUILD_WITH_PROXY        "Build networking backend with PROXY Protocol v2 support" OFF)
 option(BUILD_VENDORED_EXAMPLES "Build examples for networking backend"                   OFF)
 option(BUILD_VENDORED_TESTS    "Build tests for networking backend"                      OFF)
@@ -189,6 +190,16 @@ endif(MSVC)
 if (BUILD_WITH_PROXY)
   target_compile_definitions(uWebSockets INTERFACE UWS_WITH_PROXY)
 endif (BUILD_WITH_PROXY)
+
+if (USE_ZLIB)
+  find_conan_package(ZLIB)
+  target_link_libraries(uWebSockets
+    INTERFACE
+      ZLIB::ZLIB
+  )
+else()
+  target_compile_definitions(uWebSockets INTERFACE UWS_NO_ZLIB)
+endif (USE_ZLIB)
 
 target_compile_features(uWebSockets
   INTERFACE
