@@ -18,9 +18,9 @@ namespace websocket_server
   namespace fs = std::filesystem;
 
 #ifdef WS_NO_TLS
-  constexpr bool using_TLS = true;
-#else
   constexpr bool using_TLS = false;
+#else
+  constexpr bool using_TLS = true;
 #endif
   constexpr bool compress_outgoing_messages = true;
 
