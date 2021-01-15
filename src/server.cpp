@@ -50,7 +50,12 @@ namespace websocket_server
       server_([params]() {
         if constexpr (using_TLS)
         {
-          return uWS::SocketContextOptions{.key_file_name = params.key_file.c_str(), .cert_file_name = params.cert_file.c_str()};
+          uWS::SocketContextOptions options;
+
+          options.key_file_name  = params.key_file.c_str();
+          options.cert_file_name = params.cert_file.c_str();
+
+          return options;
         }
         return uWS::SocketContextOptions{};
       }()),
