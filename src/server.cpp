@@ -11,12 +11,12 @@
 #include <utility>
 
 template <>
-struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<void *>
+struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<std::string_view>
 {
   template <typename FormatContext>
   auto format(websocket_server::WSS::connection_type handle, FormatContext &ctx)
   {
-    return fmt::formatter<void *>::format(handle.lock().get(), ctx);
+    return fmt::formatter<std::string_view>::format(handle->getRemoteAddressAsText(), ctx);
   }
 };
 
@@ -25,9 +25,10 @@ namespace std
   template <>
   struct hash<websocket_server::WSS::connection_type>
   {
-    size_t operator()(const websocketpp::connection_hdl &handle) const
+    size_t operator()(const websocket_server::WSS::connection_type &handle) const
     {
-      return std::hash<std::string>()(fmt::format("{}", handle));
+      // return std::hash<std::string>()(fmt::format("{}", handle));
+      return std::hash<std::string_view>()(handle->getRemoteAddress());
     }
   };
 } // namespace std
@@ -39,47 +40,34 @@ namespace websocket_server
   constexpr auto peer_id_key      = "peer_id";
   constexpr auto data_key         = "content";
 
-  WSS::WSS(const Parameters &params) : run_debug_logger_(params.verbose), insecure_(params.insecure)
+  WSS::WSS(const Parameters &params) :
+      server_([params]() {
+        if constexpr (using_TLS)
+        {
+          return uWS::SocketContextOptions{.key_file_name  = params.key_file.string().c_str(),
+                                           .cert_file_name = params.cert_file.string().c_str()};
+        }
+        return uWS::SocketContextOptions{};
+      }()),
+      run_debug_logger_(params.verbose)
   {
-    using websocketpp::lib::bind;
-
-    if (insecure_)
-    {
-      server_.emplace<insecure_server_type>();
-    }
-    else
-    {
-      server_.emplace<secure_server_type>();
-    }
-
-    std::visit([](auto &&server) { server.init_asio(); }, server_);
-    std::visit([](auto &&server) { server.set_reuse_addr(true); }, server_);
-
-    std::visit(
-        [this](auto &&server) {
-          server.set_message_handler([this](auto handle, auto message) { message_handler(handle, message); });
-        },
-        server_);
-    std::visit([this](auto &&server) { server.set_http_handler([this](auto handle) { http_handler(handle); }); }, server_);
-    std::visit([this](auto &&server) { server.set_close_handler([this](auto handle) { remove_client_from_room(handle); }); },
-               server_);
-    std::visit(
-        [this, params](auto &&server) {
-          if constexpr (std::is_same_v<std::decay_t<decltype(server)>, secure_server_type>)
-          {
-            server.set_tls_init_handler(
-                [this, params](auto handle) { return tls_init_handler(handle, params.key_file, params.cert_file); });
-          }
-        },
-        server_);
-
-    std::visit([port = params.port](auto &&server) { server.listen(port); }, server_);
-    std::visit([](auto &&server) { server.start_accept(); }, server_);
-
-    if (params.verbose)
-    {
-      fmt::print(fg(fmt::color::lime_green), "initialized wss server on port: {}\n", params.port);
-    }
+    server_.ws<user_data_type>("/*",
+                               {.open    = [this](auto ws) { http_handler(ws); },
+                                .message = [this](auto ws, auto message, auto op_code) { message_handler(ws, message); },
+                                .close   = [this](auto ws, auto code, auto message) { remove_client_from_room(ws); }});
+    server_.listen(params.port, [verbose = params.verbose, port = params.port](auto listen_socket) {
+      if (verbose)
+      {
+        if (listen_socket)
+        {
+          fmt::print(fg(fmt::color::lime_green), "initialized wss server on port: {}\n", port);
+        }
+        else
+        {
+          fmt::print(fg(fmt::color::orange_red), "ERROR: unable to initialize wss server on port: {}\n", port);
+        }
+      }
+    });
 
     debug_logger_ = thread_type{[this]() {
       constexpr auto interval = std::chrono::seconds{1};
@@ -115,14 +103,14 @@ namespace websocket_server
       fmt::print(fg(fmt::color::cyan), "starting server.\n");
     }
 
-    std::visit([](auto &&server) { server.run(); }, server_);
+    server_.run();
   }
 
-  void WSS::message_handler(connection_type handle, message_pointer_type message)
+  void WSS::message_handler(connection_type handle, message_view_type message)
   {
     // auto connection = std::visit([handle](auto &&server) { return server.get_con_from_hdl(handle); }, server_);
 
-    auto parsed_data = json::parse(message->get_payload());
+    auto parsed_data = json::parse(message.data());
 
     if (run_debug_logger_)
     {
@@ -136,13 +124,13 @@ namespace websocket_server
     const auto &current_room = rooms_.at(room_id);
 
     parsed_data[peer_id_key] = client_mapping_[*current_client].id();
-    message->set_payload(parsed_data.dump());
+    auto new_message         = parsed_data.dump();
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
       if (current_client != peer)
       {
-        std::visit([peer, message](auto &&server) { server.send(*peer, message); }, server_);
+        (*peer)->send(new_message, uWS::OpCode::TEXT, compress_outgoing_messages);
       }
     }
   }
@@ -163,9 +151,10 @@ namespace websocket_server
       json client_reply_message = {{peer_id_key, client_mapping_[handle].id()},
                                    {message_type_key, message_type_to_string.at(MessageType::SERVER)},
                                    {data_key, "your id"}};
-      std::visit([handle, client_reply_message](
-                     auto &&server) { server.send(handle, client_reply_message.dump(), websocketpp::frame::opcode::TEXT); },
-                 server_);
+      handle->send(client_reply_message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
+      // std::visit([handle, client_reply_message](
+      //               auto &&server) { server.send(handle, client_reply_message.dump(), websocketpp::frame::opcode::TEXT); },
+      //           server_);
 
       if (run_debug_logger_)
       {
@@ -206,8 +195,7 @@ namespace websocket_server
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
-      std::visit([peer, message](auto &&server) { server.send(*peer, message.dump(), websocketpp::frame::opcode::TEXT); },
-                 server_);
+      (*peer)->send(message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
     }
 
     auto room_closed = close_if_empty(room_id);
@@ -226,34 +214,21 @@ namespace websocket_server
 
   void WSS::http_handler(connection_type handle)
   {
-    std::visit(
-        [handle](auto &&server) {
-          auto connection = server.get_con_from_hdl(handle);
-          connection->set_status(websocketpp::http::status_code::accepted);
-        },
-        server_);
-  }
+    user_data_type user_data = *static_cast<user_data_type *>(handle->getUserData());
 
-  WSS::tls_context_pointer_type WSS::tls_init_handler(connection_type handle, const fs::path &keyfile, const fs::path &certfile)
-  {
-    namespace asio                           = websocketpp::lib::asio;
-    tls_context_pointer_type context_pointer = websocketpp::lib::make_shared<tls_context_type>(asio::ssl::context::sslv23);
-
-    client_mapping_.try_emplace(handle);
-    try
+    if (run_debug_logger_)
     {
-      context_pointer->set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2 |
-                                   asio::ssl::context::no_sslv3 | asio::ssl::context::no_tlsv1 |
-                                   asio::ssl::context::single_dh_use);
-
-      context_pointer->use_certificate_file(fs::canonical(certfile).string(), asio::ssl::context::pem);
-      context_pointer->use_private_key_file(fs::canonical(keyfile).string(), asio::ssl::context::pem);
+      fmt::print(fg(fmt::color::hot_pink),
+                 "received new connection request:\n[{}:{}]\n{}\n",
+                 handle->getRemoteAddress(),
+                 handle->getRemoteAddressAsText(),
+                 user_data);
     }
-    catch (const std::exception &e)
-    {
-      fmt::print(fg(fmt::color::orange_red), "Exception thrown while initializing TLS:\n{}", e.what());
-    }
-
-    return context_pointer;
+    // std::visit(
+    //    [handle](auto &&server) {
+    //      auto connection = server.get_con_from_hdl(handle);
+    //      connection->set_status(websocketpp::http::status_code::accepted);
+    //    },
+    //    server_);
   }
 } // namespace websocket_server

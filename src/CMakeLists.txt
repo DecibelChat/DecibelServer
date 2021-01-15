@@ -1,33 +1,11 @@
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${-fstandalone-debug}")
 
+option(INSECURE_SERVER "Build a server that does not use SSL. May be useful for local machine testing." OFF)
 
-find_package(cxxopts QUIET)
-if (NOT ${cxxopts_FOUND})
-  conan_cmake_install(BUILD missing)
-  
-  find_package(cxxopts REQUIRED)
-endif()
-
-find_package(fmt QUIET)
-if (NOT ${fmt_FOUND})
-  conan_cmake_install(BUILD missing)
-  
-  find_package(fmt REQUIRED)
-endif()
-
-find_package(nlohmann_json QUIET)
-if (NOT ${nlohmann_json_FOUND})
-  conan_cmake_install(BUILD missing)
-  
-  find_package(nlohmann_json REQUIRED)
-endif()
-
-find_package(websocketpp QUIET)
-if (NOT ${websocketpp_FOUND})
-  conan_cmake_install(BUILD missing)
-  
-  find_package(websocketpp REQUIRED)
-endif()
+find_conan_package(cxxopts)
+find_conan_package(fmt)
+find_conan_package(nlohmann_json)
+# find_conan_package(websocketpp)
 
 list(APPEND wss_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/ClientInfo.cpp
@@ -57,7 +35,8 @@ target_compile_features(websocketsecure_server
 
 target_link_libraries(websocketsecure_server 
 PUBLIC
-  websocketpp::websocketpp
+  # websocketpp::websocketpp
+  uWebSockets
 PRIVATE
   fmt::fmt
   nlohmann_json::nlohmann_json
@@ -67,6 +46,13 @@ target_compile_options(websocketsecure_server
 PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:$<$<CONFIG:Debug>:/bigobj>>
 )
+
+if (INSECURE_SERVER)
+  target_compile_definitions(websocketsecure_server
+  PUBLIC
+    WS_NO_TLS
+  )
+endif (INSECURE_SERVER)
 
 add_executable(server 
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
