@@ -29,9 +29,6 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
     options.add_options()("verbose",
                           "If true, server will print verbose debugging information to the console.",
                           cxxopts::value<decltype(Parameters::verbose)>(params.verbose)->default_value("false"));
-    options.add_options()("insecure",
-                          "If true, application will host an insecure server. Should only be used for local debugging.",
-                          cxxopts::value<decltype(Parameters::insecure)>(params.insecure)->default_value("false"));
 
     auto result = options.parse(argc, argv);
 
@@ -55,7 +52,7 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
       print_help();
     }
 
-    if (!params.insecure)
+    if constexpr (websocket_server::using_TLS)
     {
       handle_required_argument("certfile");
       handle_required_argument("keyfile");

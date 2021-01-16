@@ -1,10 +1,6 @@
 # DecibelServer
 
 ## Dependencies/Requirements
-### Python Implementation
-```bash
-pip install -r requirements.txt
-```
 ### C++ Implementation
 A C++20 capable compiler is required. Currently, the following should be able to build the project:
 - gcc >= 9
@@ -19,7 +15,11 @@ A C++20 capable compiler is required. Currently, the following should be able to
 - [cxxopts](https://github.com/jarro2783/cxxopts)
 - [fmt](https://github.com/fmtlib/fmt)
 - [nlohmann_json](https://github.com/nlohmann/json)
-- [websocketpp](https://github.com/zaphoyd/websocketpp)
+- [µWebSockets](https://github.com/uNetworking/uWebSockets)
+  - [µSockets](https://github.com/uNetworking/uSockets)
+    - [libuv](https://github.com/libuv/libuv)
+    - [openssl](https://github.com/openssl/openssl)
+  - [zlib](https://github.com/madler/zlib)
 
 For easy installation, these dependencies can all be installed "automatically" with [conan](https://conan.io/). Install conan with:
 ```bash
