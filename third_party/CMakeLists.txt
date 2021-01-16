@@ -49,7 +49,7 @@ list(APPEND uSockets_examples_sources
 )
 
 list(APPEND uSockets_tests_sources
-  ${uSockets_ROOT}/tests/sni_test.c
+  # ${uSockets_ROOT}/tests/sni_test.c # Library author does not actually build/test this
 )
 
 if (MSVC)
@@ -173,7 +173,7 @@ list(APPEND uWebSockets_examples_sources
   ${uWebSockets_ROOT}/examples/EchoServerThreaded.cpp
   ${uWebSockets_ROOT}/examples/HelloWorld.cpp
   ${uWebSockets_ROOT}/examples/HelloWorldThreaded.cpp
-  ${uWebSockets_ROOT}/examples/HttpServer.cpp
+  # ${uWebSockets_ROOT}/examples/HttpServer.cpp # Library author does not actually build/test this
   ${uWebSockets_ROOT}/examples/ServerName.cpp
   ${uWebSockets_ROOT}/examples/UpgradeAsync.cpp
   ${uWebSockets_ROOT}/examples/UpgradeSync.cpp
@@ -181,9 +181,8 @@ list(APPEND uWebSockets_examples_sources
 
 list(APPEND uWebSockets_tests_sources
   ${uWebSockets_ROOT}/tests/BloomFilter.cpp
-  ${uWebSockets_ROOT}/tests/ExtensionsNegotiator.cpp
   ${uWebSockets_ROOT}/tests/HttpRouter.cpp
-  ${uWebSockets_ROOT}/tests/TopicTree.cpp
+  # ${uWebSockets_ROOT}/tests/TopicTree.cpp # Library author does not actually build/test this
 )
 
 add_library(uWebSockets INTERFACE)
