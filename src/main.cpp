@@ -29,6 +29,12 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
     options.add_options()("verbose",
                           "If true, server will print verbose debugging information to the console.",
                           cxxopts::value<decltype(Parameters::verbose)>(params.verbose)->default_value("false"));
+    options.add_options()("s,logger_max_size",
+                          "Max size of rotating log files, in MB. Default is 0, or infinite.",
+                          cxxopts::value<decltype(Parameters::max_log_mb)>(params.max_log_mb)->default_value("0"));
+    options.add_options()("o,logger_output_file",
+                          "Filename for logs.",
+                          cxxopts::value<decltype(Parameters::log_file)>(params.log_file));
 
     auto result = options.parse(argc, argv);
 

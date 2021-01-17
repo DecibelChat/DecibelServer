@@ -32,6 +32,9 @@ namespace websocket_server
     fs::path key_file;
 
     bool verbose;
+
+    float max_log_mb;
+    fs::path log_file;
   };
 
   class WSS
@@ -83,6 +86,14 @@ namespace websocket_server
 #else
     using thread_type = std::thread;
 #endif
+    static constexpr auto logger_name_console = "decibel console";
+    static constexpr auto logger_name_error   = "decibel errors";
+    static constexpr auto logger_name_file    = "decibel log file";
+
+    static void initialize_loggers(const Parameters &);
+
+    template <typename LogLevel, class... Args>
+    static void log(LogLevel, Args &&...);
 
     void message_handler(connection_type handle, message_view_type message);
 

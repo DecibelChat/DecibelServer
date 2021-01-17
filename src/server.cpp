@@ -6,6 +6,10 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <nlohmann/json.hpp>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <utility>
@@ -51,6 +55,8 @@ namespace websocket_server
       }()),
       run_debug_logger_(params.verbose)
   {
+    initialize_loggers(params);
+
     server_.ws<user_data_type>("/*",
                                {
                                    .compression = (compress_outgoing_messages) ? uWS::CompressOptions::SHARED_COMPRESSOR :
@@ -84,10 +90,12 @@ namespace websocket_server
       {
         if (listen_socket)
         {
+          log(spdlog::level::info, "initialized wss server on port: {}\n", port);
           fmt::print(fg(fmt::color::lime_green), "initialized wss server on port: {}\n", port);
         }
         else
         {
+          log(spdlog::level::critical, "ERROR: unable to initialize wss server on port: {}\n", port);
           fmt::print(fg(fmt::color::orange_red), "ERROR: unable to initialize wss server on port: {}\n", port);
         }
       }
@@ -135,6 +143,61 @@ namespace websocket_server
     user_data_type &user_data = *static_cast<user_data_type *>(handle->getUserData());
 
     return user_data;
+  }
+
+  void WSS::initialize_loggers(const Parameters &parameters)
+  {
+    constexpr auto logger_flush_period = std::chrono::seconds{1};
+    constexpr auto megabyte            = 1024 * 1024;
+
+    spdlog::drop_all(); // remove default logger
+    spdlog::flush_every(logger_flush_period);
+
+    auto console = spdlog::stdout_color_mt(logger_name_console);
+
+    auto errors = spdlog::stderr_color_mt(logger_name_error);
+
+    auto file_logger = [logger_name = logger_name_file](auto filename, auto max_mb) {
+      if (filename.empty())
+      {
+        filename = fs::temp_directory_path() / "decibel_server" / "log.txt";
+      }
+
+      if (max_mb > 0)
+      {
+        auto max_size            = static_cast<std::size_t>(megabyte * max_mb);
+        constexpr auto max_files = 2;
+        return spdlog::rotating_logger_mt(logger_name, filename, max_size, max_files);
+      }
+
+      return spdlog::basic_logger_mt(logger_name, filename, true);
+    }(parameters.log_file, parameters.max_log_mb);
+
+    console->set_level(parameters.verbose ? spdlog::level::debug : spdlog::level::info);
+    errors->set_level(spdlog::level::err);
+    file_logger->set_level(spdlog::level::trace);
+
+    spdlog::set_pattern("[%Y-%m-%d %T.%F] [%l] %v"); // [YYYY-MM-DD HH:MM:SS.nano] [level] message
+  }
+
+  template <typename LogLevel, class... Args>
+  void WSS::log(LogLevel level, Args &&...args)
+  {
+    using first_type = typename std::tuple_element<0, std::tuple<Args...>>::type;
+    if constexpr (std::is_same_v<first_type, fmt::color>)
+    {
+      [](auto &&level, auto &&color, auto &&...remaining_args) {
+        spdlog::get(logger_name_console)
+            ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
+        spdlog::get(logger_name_error)
+            ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
+        spdlog::get(logger_name_file)->log(level, std::forward<decltype(remaining_args)>(remaining_args)...);
+      }(level, std::forward<Args>(args)...);
+    }
+    else
+    {
+      spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) { l->log(level, std::forward<Args>(args)...); });
+    }
   }
 
   void WSS::message_handler(connection_type handle, message_view_type message)
