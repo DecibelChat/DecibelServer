@@ -167,10 +167,10 @@ namespace websocket_server
       {
         auto max_size            = static_cast<std::size_t>(megabyte * max_mb);
         constexpr auto max_files = 2;
-        return spdlog::rotating_logger_mt(logger_name, filename, max_size, max_files);
+        return spdlog::rotating_logger_mt(logger_name, filename.string(), max_size, max_files);
       }
 
-      return spdlog::basic_logger_mt(logger_name, filename, true);
+      return spdlog::basic_logger_mt(logger_name, filename.string(), true);
     }(parameters.log_file, parameters.max_log_mb);
 
     console->set_level(parameters.verbose ? spdlog::level::debug : spdlog::level::info);
