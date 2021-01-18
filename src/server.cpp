@@ -14,7 +14,7 @@
 #include <chrono>
 #include <utility>
 
-std::atomic<bool> log_json_multiline = false;
+std::atomic<int> log_json_indent = -1;
 
 template <>
 struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<std::string>
@@ -79,19 +79,42 @@ struct fmt::formatter<websocket_server::WSS::rooms_container_type>
 };
 
 template <>
-struct fmt::formatter<nlohmann::json> : formatter<std::string>
+struct fmt::formatter<nlohmann::json>
 {
+  decltype(log_json_indent)::value_type indent_size = log_json_indent.load();
+
+  constexpr auto parse(format_parse_context &ctx)
+  {
+    auto it  = ctx.begin();
+    auto end = ctx.end();
+    if (it != end)
+    {
+      try
+      {
+        indent_size = std::stoi(it);
+
+        ++it;
+      }
+      catch (...)
+      {
+        throw format_error("invalid format");
+      }
+    }
+
+    // Check if reached the end of the range:
+    if (it != end && *it != '}')
+    {
+      throw format_error("invalid format");
+    }
+
+    // Return an iterator past the end of the parsed range:
+    return it;
+  }
+
   template <typename FormatContext>
   auto format(const nlohmann::json &j, FormatContext &ctx)
   {
-    if (log_json_multiline)
-    {
-      return fmt::formatter<std::string>::format(j.dump(2), ctx);
-    }
-    else
-    {
-      return fmt::formatter<std::string>::format(j.dump(), ctx);
-    }
+    return format_to(ctx.out(), "{}", j.dump(indent_size));
   }
 };
 
@@ -124,7 +147,7 @@ namespace websocket_server
         }
         return uWS::SocketContextOptions{};
       }()),
-      run_debug_logger_(params.verbose)
+      run_debug_logger_(true)
   {
     initialize_loggers(params);
 
@@ -139,11 +162,14 @@ namespace websocket_server
                                          {
                                            message_handler(ws, message);
                                          }
-                                         log(spdlog::level::warn,
-                                             fmt::color::orange_red,
-                                             "cannot handle received message of type: {} [{}]",
-                                             static_cast<int>(op_code),
-                                             message);
+                                         else
+                                         {
+                                           log(spdlog::level::warn,
+                                               fmt::color::orange_red,
+                                               "cannot handle received message of type: {} [{}]",
+                                               static_cast<int>(op_code),
+                                               message);
+                                         }
                                        },
                                    .close =
                                        [this](auto ws, auto code, auto message) {
@@ -218,7 +244,7 @@ namespace websocket_server
 
       if (max_mb > 0)
       {
-        auto max_size            = static_cast<std::size_t>(megabyte * max_mb);
+        auto max_size            = static_cast<std::size_t>(megabyte * static_cast<double>(max_mb));
         constexpr auto max_files = 2;
         return spdlog::rotating_logger_mt(logger_name, filename.string(), max_size, max_files);
       }
@@ -226,7 +252,26 @@ namespace websocket_server
       return spdlog::basic_logger_mt(logger_name, filename.string(), true);
     }(parameters.log_file, parameters.max_log_mb);
 
-    console->set_level(parameters.verbose ? spdlog::level::debug : spdlog::level::info);
+    console->set_level([](int level) {
+      if (level <= 0)
+      {
+        return spdlog::level::err;
+      }
+      else if (level == 1)
+      {
+        return spdlog::level::warn;
+      }
+      else if (level == 2)
+      {
+        return spdlog::level::info;
+      }
+      else if (level == 3)
+      {
+        return spdlog::level::debug;
+      }
+
+      return spdlog::level::trace;
+    }(parameters.verbosity));
     errors->set_level(spdlog::level::err);
     file_logger->set_level(spdlog::level::trace);
 
@@ -248,22 +293,35 @@ namespace websocket_server
     if constexpr (std::is_same_v<first_type, fmt::color>)
     {
       [](auto &&level, auto &&color, auto &&... remaining_args) {
-        log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
-        log_json_multiline.store(true);
+        // template <typename E>
+        // constexpr auto to_integral(E e)->typename std::underlying_type<E>::type
+        //{
+        //  return static_cast<typename std::underlying_type<E>::type>(e);
+        //}
+        // auto color_code = static_cast<typename std::underlying_type<fmt::color>::type>(color);
+        // auto color_formatter = fmt::detail::make_foreground_color<char>(fg(color).get_foreground());
+
+        // std::vector<char> cc(color_formatter.begin(), color_formatter.end());
+
+        // auto console_sink =
+        //  dynamic_cast<spdlog::sinks::stdout_color_sink_mt *>(spdlog::get(logger_name_console)->sinks().back().get());
+        // console_sink->set_color(level, color_code);
+
+        log_json_indent.store(2);
         spdlog::get(logger_name_console)
             ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
         spdlog::get(logger_name_error)
             ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
-        log_json_multiline.store(false);
+        log_json_indent.store(-1);
         spdlog::get(logger_name_file)->log(level, std::forward<decltype(remaining_args)>(remaining_args)...);
       }(level, std::forward<Args>(args)...);
     }
     else
     {
-      log_json_multiline.store(true);
+      log_json_indent.store(2);
       spdlog::get(logger_name_console)->log(level, std::forward<Args>(args)...);
       spdlog::get(logger_name_error)->log(level, std::forward<Args>(args)...);
-      log_json_multiline.store(false);
+      log_json_indent.store(-1);
       spdlog::get(logger_name_file)->log(level, std::forward<Args>(args)...);
       // spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) { l->log(level, std::forward<Args>(args)...); });
     }

@@ -31,7 +31,7 @@ namespace websocket_server
     fs::path cert_file;
     fs::path key_file;
 
-    bool verbose;
+    std::uint8_t verbosity;
 
     float max_log_mb;
     fs::path log_file;
