@@ -193,7 +193,7 @@ namespace websocket_server
       constexpr auto interval = std::chrono::seconds{1};
       while (run_debug_logger_.load(std::memory_order_acquire))
       {
-        log(spdlog::level::debug, fmt::color::violet, "Rooms:\n{:2}", rooms_);
+        log(spdlog::level::debug, fmt::color::violet, "Rooms:{}{:2}", rooms_.empty() ? "" : "\n", rooms_);
         std::this_thread::sleep_for(interval);
       }
     }};
