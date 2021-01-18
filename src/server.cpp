@@ -14,7 +14,7 @@
 #include <chrono>
 #include <utility>
 
-std::atomic<int> log_json_indent = -1;
+static std::atomic<int> log_json_indent = -1;
 
 template <>
 struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<std::string>
@@ -81,7 +81,7 @@ struct fmt::formatter<websocket_server::WSS::rooms_container_type>
 template <>
 struct fmt::formatter<nlohmann::json>
 {
-  decltype(log_json_indent)::value_type indent_size = log_json_indent.load();
+  decltype(log_json_indent.load()) indent_size = log_json_indent.load();
 
   constexpr auto parse(format_parse_context &ctx)
   {
@@ -155,7 +155,7 @@ namespace websocket_server
                                {
                                    .compression = (compress_outgoing_messages) ? uWS::CompressOptions::SHARED_COMPRESSOR :
                                                                                  uWS::CompressOptions::DISABLED,
-                                   .open = [this](auto ws) { http_handler(ws); },
+                                   .open        = [this](auto ws) { http_handler(ws); },
                                    .message =
                                        [this](auto ws, auto message, auto op_code) {
                                          if (op_code == uWS::OpCode::TEXT)
@@ -279,7 +279,7 @@ namespace websocket_server
   }
 
   template <typename LogLevel, class... Args>
-  void WSS::log(LogLevel level, Args &&... args)
+  void WSS::log(LogLevel level, Args &&...args)
   {
     using first_type = typename std::tuple_element<0, std::tuple<Args...>>::type;
 
@@ -292,7 +292,7 @@ namespace websocket_server
 
     if constexpr (std::is_same_v<first_type, fmt::color>)
     {
-      [](auto &&level, auto &&color, auto &&... remaining_args) {
+      [](auto &&level, auto &&color, auto &&...remaining_args) {
         // template <typename E>
         // constexpr auto to_integral(E e)->typename std::underlying_type<E>::type
         //{
