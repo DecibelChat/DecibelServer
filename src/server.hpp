@@ -75,12 +75,13 @@ namespace websocket_server
         return user_data(lhs) < user_data(rhs);
       }
     };
+    using client_lookup_type = std::map<connection_type, client_type, connection_comparator>;
 
+  public:
     using room_type            = std::set<connection_type, connection_comparator>;
     using rooms_container_type = std::unordered_map<room_id_type, room_type>;
 
-    using client_lookup_type = std::map<connection_type, client_type, connection_comparator>;
-
+  private:
 #ifdef __cpp_lib_jthread
     using thread_type = std::jthread;
 #else

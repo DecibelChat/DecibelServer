@@ -24,6 +24,58 @@ struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<std::s
   }
 };
 
+template <>
+struct fmt::formatter<websocket_server::WSS::rooms_container_type>
+{
+  std::string indent;
+
+  constexpr auto parse(format_parse_context &ctx)
+  {
+    auto it  = ctx.begin();
+    auto end = ctx.end();
+    if (it != end)
+    {
+      try
+      {
+        auto indent_size = std::stoi(it);
+        for (auto ii = 0; ii < indent_size; ++ii)
+        {
+          indent += " ";
+        }
+        ++it;
+      }
+      catch (...)
+      {
+        throw format_error("invalid format");
+      }
+    }
+
+    // Check if reached the end of the range:
+    if (it != end && *it != '}')
+    {
+      throw format_error("invalid format");
+    }
+
+    // Return an iterator past the end of the parsed range:
+    return it;
+  }
+  template <typename FormatContext>
+  auto format(const websocket_server::WSS::rooms_container_type &rooms, FormatContext &ctx)
+  {
+    for (auto room_iter = rooms.begin(); room_iter != rooms.end(); ++room_iter)
+    {
+      if (room_iter != rooms.begin())
+      {
+        format_to(ctx.out(), "\n");
+      }
+
+      format_to(ctx.out(), "{}[{}] : {{{}}}", indent, room_iter->first, fmt::join(room_iter->second, ", "));
+    }
+
+    return ctx.out();
+  }
+};
+
 namespace std
 {
   template <>
@@ -68,36 +120,27 @@ namespace websocket_server
                                          {
                                            message_handler(ws, message);
                                          }
-                                         else if (run_debug_logger_)
-                                         {
-                                           fmt::print(fg(fmt::color::orange_red),
-                                                      "ERROR: Cannot handle received message of type: {}\n{}\n",
-                                                      static_cast<int>(op_code),
-                                                      message);
-                                         }
+                                         log(spdlog::level::warn,
+                                             fmt::color::orange_red,
+                                             "cannot handle received message of type: {} [{}]",
+                                             static_cast<int>(op_code),
+                                             message);
                                        },
                                    .close =
                                        [this](auto ws, auto code, auto message) {
-                                         if (run_debug_logger_)
-                                         {
-                                           fmt::print(fg(fmt::color::dark_turquoise), "{}: {}\n", code, message);
-                                         }
+                                         log(spdlog::level::debug, fmt::color::dark_turquoise, "{}: {}", code, message);
+
                                          remove_client_from_room(ws);
                                        },
                                });
-    server_.listen(params.port, [display = &run_debug_logger_, port = params.port](auto listen_socket) {
-      if (display)
+    server_.listen(params.port, [port = params.port](auto listen_socket) {
+      if (listen_socket)
       {
-        if (listen_socket)
-        {
-          log(spdlog::level::info, "initialized wss server on port: {}\n", port);
-          fmt::print(fg(fmt::color::lime_green), "initialized wss server on port: {}\n", port);
-        }
-        else
-        {
-          log(spdlog::level::critical, "ERROR: unable to initialize wss server on port: {}\n", port);
-          fmt::print(fg(fmt::color::orange_red), "ERROR: unable to initialize wss server on port: {}\n", port);
-        }
+        log(spdlog::level::info, fmt::color::lime_green, "initialized wss server on port: {}", port);
+      }
+      else
+      {
+        log(spdlog::level::critical, fmt::color::orange_red, "unable to initialize wss server on port: {}", port);
       }
     });
 
@@ -105,15 +148,7 @@ namespace websocket_server
       constexpr auto interval = std::chrono::seconds{1};
       while (run_debug_logger_.load(std::memory_order_acquire))
       {
-        auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        fmt::print(fg(fmt::color::violet), "[{:%F %T}] Rooms:\n", fmt::localtime(now));
-
-        for (const auto &room : rooms_)
-        {
-          fmt::print(fg(fmt::color::violet), "  [{}] : ", room.first);
-
-          fmt::print(fg(fmt::color::violet), "{{{}}}\n", fmt::join(room.second, ", "));
-        }
+        log(spdlog::level::debug, fmt::color::violet, "Rooms:\n{:2}", rooms_);
         std::this_thread::sleep_for(interval);
       }
     }};
@@ -130,10 +165,7 @@ namespace websocket_server
 
   void WSS::start()
   {
-    if (run_debug_logger_)
-    {
-      fmt::print(fg(fmt::color::cyan), "starting server.\n");
-    }
+    log(spdlog::level::info, fmt::color::cyan, "starting server.");
 
     server_.run();
   }
@@ -204,10 +236,7 @@ namespace websocket_server
   {
     auto parsed_data = json::parse(std::string{message});
 
-    if (run_debug_logger_)
-    {
-      fmt::print(fg(fmt::color::yellow), "{}\n", parsed_data.dump(2));
-    }
+    log(spdlog::level::trace, fmt::color::yellow, "{}", parsed_data.dump(2));
 
     auto room_id = parsed_data.at("code").get<room_id_type>();
 
@@ -247,14 +276,10 @@ namespace websocket_server
 
       user_data(handle) = client_mapping_[handle].id();
 
-      if (run_debug_logger_)
-      {
-        auto uuid = client_mapping_[handle].id();
+      auto uuid = client_mapping_[handle].id();
 
-        fmt::print(fg(fmt::color::dark_turquoise), "Added connection: [room: {}, uuid: {}]\n", room_id, uuid);
-
-        fmt::print(fg(fmt::color::aquamarine), "{}\n", client_reply_message.dump(2));
-      }
+      log(spdlog::level::debug, fmt::color::dark_turquoise, "Added connection: [room: {}, uuid: {}]", room_id, uuid);
+      log(spdlog::level::trace, fmt::color::aquamarine, "{}", client_reply_message.dump(2));
     }
 
     return result;
@@ -276,12 +301,8 @@ namespace websocket_server
     current_room.erase(handle);
     client_mapping_.erase(handle);
 
-    if (run_debug_logger_)
-    {
-      fmt::print(fg(fmt::color::dark_turquoise), "removed client {} from room {}\n", client_uuid, room_id);
-
-      fmt::print(fg(fmt::color::aquamarine), "{}\n", message.dump(2));
-    }
+    log(spdlog::level::debug, fmt::color::dark_turquoise, "removed client {} from room {}", client_uuid, room_id);
+    log(spdlog::level::trace, fmt::color::aquamarine, "{}", message.dump(2));
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
@@ -304,13 +325,11 @@ namespace websocket_server
 
   void WSS::http_handler(connection_type handle)
   {
-    if (run_debug_logger_)
-    {
-      fmt::print(fg(fmt::color::hot_pink),
-                 "received new connection request:\n[{}:{}]\n",
-                 handle->getRemoteAddress(),
-                 handle->getRemoteAddressAsText());
-    }
+    log(spdlog::level::debug,
+        fmt::color::hot_pink,
+        "received new connection request: [{}:{}]",
+        handle->getRemoteAddress(),
+        handle->getRemoteAddressAsText());
   }
 
 } // namespace websocket_server
