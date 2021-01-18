@@ -14,6 +14,8 @@
 #include <chrono>
 #include <utility>
 
+std::atomic<bool> log_json_multiline = false;
+
 template <>
 struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<std::string>
 {
@@ -76,6 +78,23 @@ struct fmt::formatter<websocket_server::WSS::rooms_container_type>
   }
 };
 
+template <>
+struct fmt::formatter<nlohmann::json> : formatter<std::string>
+{
+  template <typename FormatContext>
+  auto format(const nlohmann::json &j, FormatContext &ctx)
+  {
+    if (log_json_multiline)
+    {
+      return fmt::formatter<std::string>::format(j.dump(2), ctx);
+    }
+    else
+    {
+      return fmt::formatter<std::string>::format(j.dump(), ctx);
+    }
+  }
+};
+
 namespace std
 {
   template <>
@@ -113,7 +132,7 @@ namespace websocket_server
                                {
                                    .compression = (compress_outgoing_messages) ? uWS::CompressOptions::SHARED_COMPRESSOR :
                                                                                  uWS::CompressOptions::DISABLED,
-                                   .open        = [this](auto ws) { http_handler(ws); },
+                                   .open = [this](auto ws) { http_handler(ws); },
                                    .message =
                                        [this](auto ws, auto message, auto op_code) {
                                          if (op_code == uWS::OpCode::TEXT)
@@ -195,6 +214,8 @@ namespace websocket_server
         filename = fs::temp_directory_path() / "decibel_server" / "log.txt";
       }
 
+      fmt::print("logging to {}\n", filename.string());
+
       if (max_mb > 0)
       {
         auto max_size            = static_cast<std::size_t>(megabyte * max_mb);
@@ -213,22 +234,38 @@ namespace websocket_server
   }
 
   template <typename LogLevel, class... Args>
-  void WSS::log(LogLevel level, Args &&...args)
+  void WSS::log(LogLevel level, Args &&... args)
   {
     using first_type = typename std::tuple_element<0, std::tuple<Args...>>::type;
+
+    // if constexpr (std::disjunction_v<nlohmann::detail::is_basic_json<typename std::decay<Args>::type>...>)
+    //{
+    //}
+    // else
+    //{
+    //}
+
     if constexpr (std::is_same_v<first_type, fmt::color>)
     {
-      [](auto &&level, auto &&color, auto &&...remaining_args) {
+      [](auto &&level, auto &&color, auto &&... remaining_args) {
+        log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
+        log_json_multiline.store(true);
         spdlog::get(logger_name_console)
             ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
         spdlog::get(logger_name_error)
             ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
+        log_json_multiline.store(false);
         spdlog::get(logger_name_file)->log(level, std::forward<decltype(remaining_args)>(remaining_args)...);
       }(level, std::forward<Args>(args)...);
     }
     else
     {
-      spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) { l->log(level, std::forward<Args>(args)...); });
+      log_json_multiline.store(true);
+      spdlog::get(logger_name_console)->log(level, std::forward<Args>(args)...);
+      spdlog::get(logger_name_error)->log(level, std::forward<Args>(args)...);
+      log_json_multiline.store(false);
+      spdlog::get(logger_name_file)->log(level, std::forward<Args>(args)...);
+      // spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) { l->log(level, std::forward<Args>(args)...); });
     }
   }
 
@@ -236,7 +273,7 @@ namespace websocket_server
   {
     auto parsed_data = json::parse(std::string{message});
 
-    log(spdlog::level::trace, fmt::color::yellow, "{}", parsed_data.dump(2));
+    log(spdlog::level::trace, fmt::color::yellow, "{}", parsed_data);
 
     auto room_id = parsed_data.at("code").get<room_id_type>();
 
@@ -279,7 +316,7 @@ namespace websocket_server
       auto uuid = client_mapping_[handle].id();
 
       log(spdlog::level::debug, fmt::color::dark_turquoise, "Added connection: [room: {}, uuid: {}]", room_id, uuid);
-      log(spdlog::level::trace, fmt::color::aquamarine, "{}", client_reply_message.dump(2));
+      log(spdlog::level::trace, fmt::color::aquamarine, "{}", client_reply_message);
     }
 
     return result;
@@ -302,7 +339,7 @@ namespace websocket_server
     client_mapping_.erase(handle);
 
     log(spdlog::level::debug, fmt::color::dark_turquoise, "removed client {} from room {}", client_uuid, room_id);
-    log(spdlog::level::trace, fmt::color::aquamarine, "{}", message.dump(2));
+    log(spdlog::level::trace, fmt::color::aquamarine, "{}", message);
 
     for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
     {
