@@ -208,8 +208,6 @@ namespace websocket_server
     auto errors = spdlog::stderr_color_mt(logger_name_error);
 
     auto file_logger = [logger_name = logger_name_file](auto filename, auto max_mb) {
-      fmt::print("logging to {}\n", filename.string());
-
       if (max_mb > 0)
       {
         auto max_size            = static_cast<std::size_t>(megabyte * static_cast<double>(max_mb));
@@ -244,6 +242,8 @@ namespace websocket_server
     file_logger->set_level(spdlog::level::trace);
 
     spdlog::set_pattern("[%Y-%m-%d %T.%F] [%l] %v"); // [YYYY-MM-DD HH:MM:SS.nano] [level] message
+
+    log(spdlog::level::info, "logging to {}", parameters.log_file.string());
   }
 
   template <typename LogLevel, class... Args>
