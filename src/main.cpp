@@ -5,6 +5,7 @@
 
 #include <fmt/color.h>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 websocket_server::Parameters parse_arguments(int argc, char **argv)
 {
@@ -26,14 +27,29 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
     options.add_options()("c,certfile",
                           "<required> The file containing the SSL certificate",
                           cxxopts::value<decltype(Parameters::cert_file)>(params.cert_file));
-    options.add_options()("verbose",
-                          "If true, server will print verbose debugging information to the console.",
-                          cxxopts::value<decltype(Parameters::verbose)>(params.verbose)->default_value("false"));
+    options.add_options()(
+        "verbose",
+        "If enabled, server will print verbose debugging information to the console. [See more detail below]",
+        cxxopts::value<decltype(Parameters::verbosity)>(params.verbosity)->default_value("0")->implicit_value("2"));
+    options.add_options()("s,logger_max_size",
+                          "Max size of rotating log files, in MB. Default is 0, or infinite.",
+                          cxxopts::value<decltype(Parameters::max_log_mb)>(params.max_log_mb)->default_value("0"));
+    options.add_options()(
+        "o,logger_output_file", "Filename for logs.", cxxopts::value<decltype(Parameters::log_file)>(params.log_file));
 
     auto result = options.parse(argc, argv);
 
     auto print_help = [&options](int exit_code = EXIT_SUCCESS) {
       fmt::print(stderr, "{}\n", options.help());
+
+      static const std::map<int, std::string> options_map{{0, "errors only"},
+                                                          {1, "warnings and errors"},
+                                                          {2, "useful info"},
+                                                          {3, "debugging information"},
+                                                          {4, "all possible output"}};
+
+      fmt::print(stderr, "More Info:\n");
+      fmt::print(stderr, "Verbosity Levels\n  {}\n", fmt::join(options_map, "\n  "));
 
       std::exit(exit_code);
     };
@@ -50,6 +66,11 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
     if (result.count("help") > 0)
     {
       print_help();
+    }
+
+    if (result.count("log_file") == 0)
+    {
+      params.log_file = websocket_server::fs::temp_directory_path() / "decibel_server" / "log.txt";
     }
 
     if constexpr (websocket_server::using_TLS)

@@ -31,7 +31,10 @@ namespace websocket_server
     fs::path cert_file;
     fs::path key_file;
 
-    bool verbose;
+    std::uint8_t verbosity;
+
+    float max_log_mb;
+    fs::path log_file;
   };
 
   class WSS
@@ -72,17 +75,23 @@ namespace websocket_server
         return user_data(lhs) < user_data(rhs);
       }
     };
+    using client_lookup_type = std::map<connection_type, client_type, connection_comparator>;
 
+  public:
     using room_type            = std::set<connection_type, connection_comparator>;
     using rooms_container_type = std::unordered_map<room_id_type, room_type>;
 
-    using client_lookup_type = std::map<connection_type, client_type, connection_comparator>;
-
+  private:
 #ifdef __cpp_lib_jthread
     using thread_type = std::jthread;
 #else
     using thread_type = std::thread;
 #endif
+
+    static void initialize_loggers(const Parameters &);
+
+    template <typename LogLevel, class... Args>
+    static void log(LogLevel, Args &&...);
 
     void message_handler(connection_type handle, message_view_type message);
 
