@@ -4,15 +4,9 @@ option(INSECURE_SERVER "Build a server that does not use SSL. May be useful for 
 
 find_conan_package(cxxopts)
 find_conan_package(fmt)
+find_conan_package(magic_enum)
 find_conan_package(nlohmann_json)
 find_conan_package(spdlog)
-
-find_package(magic_enum QUIET)
-if (NOT ${magic_enum_FOUND})
-  conan_cmake_install(BUILD missing)
-  
-  find_package(magic_enum REQUIRED)
-endif()
 
 list(APPEND wss_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/ClientInfo.cpp
