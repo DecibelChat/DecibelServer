@@ -252,30 +252,9 @@ namespace websocket_server
     using first_type  = typename std::tuple_element<0, std::tuple<Args...>>::type;
     auto &indent_size = fmt::formatter<nlohmann::json>::indent;
 
-    // if constexpr (std::disjunction_v<nlohmann::detail::is_basic_json<typename std::decay<Args>::type>...>)
-    //{
-    //}
-    // else
-    //{
-    //}
-
     if constexpr (std::is_same_v<first_type, fmt::color>)
     {
       [&indent_size](auto &&level, auto &&color, auto &&...remaining_args) {
-        // template <typename E>
-        // constexpr auto to_integral(E e)->typename std::underlying_type<E>::type
-        //{
-        //  return static_cast<typename std::underlying_type<E>::type>(e);
-        //}
-        // auto color_code = static_cast<typename std::underlying_type<fmt::color>::type>(color);
-        // auto color_formatter = fmt::detail::make_foreground_color<char>(fg(color).get_foreground());
-
-        // std::vector<char> cc(color_formatter.begin(), color_formatter.end());
-
-        // auto console_sink =
-        //  dynamic_cast<spdlog::sinks::stdout_color_sink_mt *>(spdlog::get(logger_name_console)->sinks().back().get());
-        // console_sink->set_color(level, color_code);
-
         indent_size.store(2);
         spdlog::get(logger_name_console)
             ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
@@ -292,7 +271,6 @@ namespace websocket_server
       spdlog::get(logger_name_error)->log(level, std::forward<Args>(args)...);
       indent_size.store(-1);
       spdlog::get(logger_name_file)->log(level, std::forward<Args>(args)...);
-      // spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) { l->log(level, std::forward<Args>(args)...); });
     }
   }
 
