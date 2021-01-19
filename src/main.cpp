@@ -68,6 +68,11 @@ websocket_server::Parameters parse_arguments(int argc, char **argv)
       print_help();
     }
 
+    if (result.count("log_file") == 0)
+    {
+      params.log_file = websocket_server::fs::temp_directory_path() / "decibel_server" / "log.txt";
+    }
+
     if constexpr (websocket_server::using_TLS)
     {
       handle_required_argument("certfile");

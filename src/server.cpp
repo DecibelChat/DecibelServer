@@ -14,8 +14,6 @@
 #include <chrono>
 #include <utility>
 
-static std::atomic<int> log_json_indent = -1;
-
 template <>
 struct fmt::formatter<websocket_server::WSS::connection_type> : formatter<std::string>
 {
@@ -79,42 +77,14 @@ struct fmt::formatter<websocket_server::WSS::rooms_container_type>
 };
 
 template <>
-struct fmt::formatter<nlohmann::json>
+struct fmt::formatter<nlohmann::json> : formatter<std::string>
 {
-  decltype(log_json_indent.load()) indent_size = log_json_indent.load();
-
-  constexpr auto parse(format_parse_context &ctx)
-  {
-    auto it  = ctx.begin();
-    auto end = ctx.end();
-    if (it != end)
-    {
-      try
-      {
-        indent_size = std::stoi(it);
-
-        ++it;
-      }
-      catch (...)
-      {
-        throw format_error("invalid format");
-      }
-    }
-
-    // Check if reached the end of the range:
-    if (it != end && *it != '}')
-    {
-      throw format_error("invalid format");
-    }
-
-    // Return an iterator past the end of the parsed range:
-    return it;
-  }
+  inline static std::atomic<int> indent = -1;
 
   template <typename FormatContext>
   auto format(const nlohmann::json &j, FormatContext &ctx)
   {
-    return format_to(ctx.out(), "{}", j.dump(indent_size));
+    return fmt::formatter<std::string>::format(j.dump(indent.load()), ctx);
   }
 };
 
@@ -132,10 +102,13 @@ namespace std
 
 namespace websocket_server
 {
-  using json                      = nlohmann::json;
-  constexpr auto message_type_key = "message_type";
-  constexpr auto peer_id_key      = "peer_id";
-  constexpr auto data_key         = "content";
+  using json                         = nlohmann::json;
+  constexpr auto message_type_key    = "message_type";
+  constexpr auto peer_id_key         = "peer_id";
+  constexpr auto data_key            = "content";
+  constexpr auto logger_name_console = "decibel console";
+  constexpr auto logger_name_error   = "decibel errors";
+  constexpr auto logger_name_file    = "decibel log file";
 
   WSS::WSS(const Parameters &params) :
       key_(params.key_file.string()),
@@ -235,11 +208,6 @@ namespace websocket_server
     auto errors = spdlog::stderr_color_mt(logger_name_error);
 
     auto file_logger = [logger_name = logger_name_file](auto filename, auto max_mb) {
-      if (filename.empty())
-      {
-        filename = fs::temp_directory_path() / "decibel_server" / "log.txt";
-      }
-
       fmt::print("logging to {}\n", filename.string());
 
       if (max_mb > 0)
@@ -281,7 +249,8 @@ namespace websocket_server
   template <typename LogLevel, class... Args>
   void WSS::log(LogLevel level, Args &&...args)
   {
-    using first_type = typename std::tuple_element<0, std::tuple<Args...>>::type;
+    using first_type  = typename std::tuple_element<0, std::tuple<Args...>>::type;
+    auto &indent_size = fmt::formatter<nlohmann::json>::indent;
 
     // if constexpr (std::disjunction_v<nlohmann::detail::is_basic_json<typename std::decay<Args>::type>...>)
     //{
@@ -292,7 +261,7 @@ namespace websocket_server
 
     if constexpr (std::is_same_v<first_type, fmt::color>)
     {
-      [](auto &&level, auto &&color, auto &&...remaining_args) {
+      [&indent_size](auto &&level, auto &&color, auto &&...remaining_args) {
         // template <typename E>
         // constexpr auto to_integral(E e)->typename std::underlying_type<E>::type
         //{
@@ -307,21 +276,21 @@ namespace websocket_server
         //  dynamic_cast<spdlog::sinks::stdout_color_sink_mt *>(spdlog::get(logger_name_console)->sinks().back().get());
         // console_sink->set_color(level, color_code);
 
-        log_json_indent.store(2);
+        indent_size.store(2);
         spdlog::get(logger_name_console)
             ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
         spdlog::get(logger_name_error)
             ->log(level, fmt::format(fg(color), std::forward<decltype(remaining_args)>(remaining_args)...));
-        log_json_indent.store(-1);
+        indent_size.store(-1);
         spdlog::get(logger_name_file)->log(level, std::forward<decltype(remaining_args)>(remaining_args)...);
       }(level, std::forward<Args>(args)...);
     }
     else
     {
-      log_json_indent.store(2);
+      indent_size.store(2);
       spdlog::get(logger_name_console)->log(level, std::forward<Args>(args)...);
       spdlog::get(logger_name_error)->log(level, std::forward<Args>(args)...);
-      log_json_indent.store(-1);
+      indent_size.store(-1);
       spdlog::get(logger_name_file)->log(level, std::forward<Args>(args)...);
       // spdlog::apply_all([&](std::shared_ptr<spdlog::logger> l) { l->log(level, std::forward<Args>(args)...); });
     }

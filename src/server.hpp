@@ -87,9 +87,6 @@ namespace websocket_server
 #else
     using thread_type = std::thread;
 #endif
-    static constexpr auto logger_name_console = "decibel console";
-    static constexpr auto logger_name_error   = "decibel errors";
-    static constexpr auto logger_name_file    = "decibel log file";
 
     static void initialize_loggers(const Parameters &);
 
