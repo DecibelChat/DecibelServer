@@ -146,7 +146,7 @@ namespace websocket_server
                                        },
                                    .close =
                                        [this](auto ws, auto code, auto message) {
-                                         log(spdlog::level::debug, fmt::color::dark_turquoise, "{}: {}", code, message);
+                                         log(spdlog::level::trace, fmt::color::dark_turquoise, "{}: {}", code, message);
 
                                          remove_client_from_room(ws);
                                        },
@@ -284,7 +284,7 @@ namespace websocket_server
 
     auto room_id = parsed_data.at("code").get<room_id_type>();
 
-    if (message_type == MessageType::SERVER || message_type == MessageType::CANDIDATE)
+    if (message_type == MessageType::SERVER || message_type == MessageType::CANDIDATE || message_type == MessageType::SDP)
     {
       auto [current_client, added_to_room] = add_client_to_room(room_id, handle);
 
@@ -321,7 +321,7 @@ namespace websocket_server
       {
         for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
         {
-          if (!connection_comparator()(handle, *peer))
+          if (handle != *peer)
           {
             const auto &peer_client = client_mapping_.at(*peer);
             auto distance           = current_client.distance(peer_client);
@@ -351,6 +351,14 @@ namespace websocket_server
 
   std::pair<WSS::room_type::iterator, bool> WSS::add_client_to_room(const room_id_type &room_id, connection_type handle)
   {
+    if (user_data(handle).empty())
+    {
+      ClientInfo info;
+      user_data(handle) = info.id();
+
+      client_mapping_.insert({handle, info});
+    }
+
     auto &current_room = rooms_[room_id];
 
     // add client to room if not already present
@@ -365,8 +373,6 @@ namespace websocket_server
       json client_reply_message = {
           {peer_id_key, client_mapping_[handle].id()}, {message_type_key, to_string(MessageType::SERVER)}, {data_key, "your id"}};
       handle->send(client_reply_message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
-
-      user_data(handle) = client_mapping_[handle].id();
 
       auto uuid = client_mapping_[handle].id();
 
