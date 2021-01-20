@@ -306,38 +306,78 @@ namespace websocket_server
       const auto &current_room = rooms_.at(room_id);
       auto &current_client     = client_mapping_[handle];
 
-      auto position = parsed_data.at(data_key).at("position");
-
-      auto x = position.contains("x") ? position.at("x").get<ClientInfo::position_value_type>() : 0.f;
-      auto y = position.contains("y") ? position.at("y").get<ClientInfo::position_value_type>() : 0.f;
-      auto z = position.contains("z") ? position.at("z").get<ClientInfo::position_value_type>() : 0.f;
-
-      json volume_update = {
-          {peer_id_key, current_client.id()}, {message_type_key, to_string(MessageType::VOLUME)}, {data_key, {{"volume", 0.f}}}};
-
-      log(spdlog::level::trace, fmt::color::yellow, "{}", volume_update);
-
-      if (current_client.update_position({x, y, z}))
+      if (parsed_data.contains(data_key) && parsed_data.at(data_key).contains("position"))
       {
-        for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
+        // update handle's position and inform peers
+        auto position = parsed_data.at(data_key).at("position");
+
+        auto x = position.contains("x") ? position.at("x").get<ClientInfo::position_value_type>() : 0.f;
+        auto y = position.contains("y") ? position.at("y").get<ClientInfo::position_value_type>() : 0.f;
+        auto z = position.contains("z") ? position.at("z").get<ClientInfo::position_value_type>() : 0.f;
+
+        json volume_update = {{peer_id_key, current_client.id()},
+                              {message_type_key, to_string(MessageType::VOLUME)},
+                              {data_key, {{"volume", 0.f}}}};
+
+        log(spdlog::level::trace, fmt::color::yellow, "{}", volume_update);
+
+        if (current_client.update_position({x, y, z}))
         {
-          if (handle != *peer)
+          for (auto peer : current_room)
           {
-            const auto &peer_client = client_mapping_.at(*peer);
-            auto distance           = current_client.distance(peer_client);
-            auto volume             = calculate_volume(distance);
+            if (handle != peer)
+            {
+              const auto &peer_client = client_mapping_.at(peer);
+              auto distance           = current_client.distance(peer_client);
+              auto volume             = calculate_volume(distance);
 
-            volume_update[data_key]["volume"] = volume;
+              volume_update[data_key]["volume"] = volume;
 
-            volume_update[peer_id_key] = current_client.id();
-            (*peer)->send(volume_update.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
-            log(spdlog::level::trace, fmt::color::coral, "{}", volume_update);
+              volume_update[peer_id_key] = current_client.id();
+              peer->send(volume_update.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
+              log(spdlog::level::trace, fmt::color::coral, "{}", volume_update);
 
-            volume_update[peer_id_key] = peer_client.id();
-            handle->send(volume_update.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
-            log(spdlog::level::trace, fmt::color::coral, "{}", volume_update);
+              volume_update[peer_id_key] = peer_client.id();
+              handle->send(volume_update.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
+              log(spdlog::level::trace, fmt::color::coral, "{}", volume_update);
+            }
           }
         }
+      }
+      else if (parsed_data.contains(data_key) && parsed_data.at(data_key).contains(peer_id_key))
+      {
+        // send position of requested peer to handle
+        auto peer_id = parsed_data.at(data_key).at(peer_id_key).get<client_id_type>();
+
+        // TODO: convert to binary search
+        for (auto peer : current_room)
+        {
+          const auto &peer_client = client_mapping_.at(peer);
+          if (peer_client.id() == peer_id)
+          {
+            json outbound_message = {{message_type_key, to_string(MessageType::POSITION)},
+                                     {data_key, {{peer_id, peer_client.distance(current_client)}}}};
+            handle->send(outbound_message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
+            log(spdlog::level::trace, fmt::color::coral, "[{} -> {}] {}", current_client.id(), peer_id, outbound_message);
+
+            break;
+          }
+        }
+      }
+      else
+      {
+        // send position of all peers to handle
+        json outbound_message = {{message_type_key, to_string(MessageType::POSITION)}, {data_key, json::object()}};
+        auto &peer_positions  = outbound_message.at(data_key);
+
+        for (auto peer : current_room)
+        {
+          const auto &peer_client = client_mapping_.at(peer);
+
+          peer_positions[peer_client.id()] = peer_client.distance(current_client);
+        }
+        handle->send(outbound_message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
+        log(spdlog::level::trace, fmt::color::coral, "[ -> {}] {}", current_client.id(), outbound_message);
       }
     }
     else
@@ -401,9 +441,9 @@ namespace websocket_server
     log(spdlog::level::debug, fmt::color::dark_turquoise, "removed client {} from room {}", client_uuid, room_id);
     log(spdlog::level::trace, fmt::color::aquamarine, "{}", message);
 
-    for (auto peer = current_room.begin(); peer != current_room.end(); ++peer)
+    for (auto peer : current_room)
     {
-      (*peer)->send(message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
+      peer->send(message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
     }
 
     auto room_closed = close_if_empty(room_id);
