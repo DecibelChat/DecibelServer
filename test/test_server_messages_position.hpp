@@ -79,17 +79,17 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
 
     std::array<std::string, 4> client_ids;
     std::transform(clients.begin(), clients.end(), client_ids.begin(), [](auto pair) { return pair.first; });
-    std::array<std::array<float, 4>, 4> distances = {{{{0, std::sqrt(3), std::sqrt(3), std::sqrt(405)}},
-                                                      {{std::sqrt(3), 0, std::sqrt(12), std::sqrt(362)}},
-                                                      {{std::sqrt(3), std::sqrt(12), 0, std::sqrt(454)}},
-                                                      {{std::sqrt(405), std::sqrt(362), std::sqrt(454), 0}}}};
+    std::array<std::array<float, 4>, 4> distances = {{{{0, std::sqrtf(3), std::sqrtf(3), std::sqrtf(405)}},
+                                                      {{std::sqrtf(3), 0, std::sqrtf(12), std::sqrtf(362)}},
+                                                      {{std::sqrtf(3), std::sqrtf(12), 0, std::sqrtf(454)}},
+                                                      {{std::sqrtf(405), std::sqrtf(362), std::sqrtf(454), 0}}}};
     std::array<std::array<float, 4>, 4> volumes   = {
-        {{{1, 1 / (std::sqrt(3) * std::sqrt(3)), 1 / (std::sqrt(3) * std::sqrt(3)), 1 / (std::sqrt(405) * std::sqrt(405))}},
-         {{1 / (std::sqrt(3) * std::sqrt(3)), 1, 1 / (std::sqrt(12) * std::sqrt(12)), 1 / (std::sqrt(362) * std::sqrt(362))}},
-         {{1 / (std::sqrt(3) * std::sqrt(3)), 1 / (std::sqrt(12) * std::sqrt(12)), 1, 1 / (std::sqrt(454) * std::sqrt(454))}},
-         {{1 / (std::sqrt(405) * std::sqrt(405)),
-           1 / (std::sqrt(362) * std::sqrt(362)),
-           1 / (std::sqrt(454) * std::sqrt(454)),
+        {{{1, 1 / (std::sqrtf(3) * std::sqrtf(3)), 1 / (std::sqrtf(3) * std::sqrtf(3)), 1 / (std::sqrtf(405) * std::sqrtf(405))}},
+         {{1 / (std::sqrtf(3) * std::sqrtf(3)), 1, 1 / (std::sqrtf(12) * std::sqrtf(12)), 1 / (std::sqrtf(362) * std::sqrtf(362))}},
+         {{1 / (std::sqrtf(3) * std::sqrtf(3)), 1 / (std::sqrtf(12) * std::sqrtf(12)), 1, 1 / (std::sqrtf(454) * std::sqrtf(454))}},
+         {{1 / (std::sqrtf(405) * std::sqrtf(405)),
+           1 / (std::sqrtf(362) * std::sqrtf(362)),
+           1 / (std::sqrtf(454) * std::sqrtf(454)),
            1}}}};
 
     std::vector<nlohmann::json> responses;
