@@ -23,10 +23,9 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
 
     REQUIRE(responses.size() == 1);
     auto &response = responses.front();
-    REQUIRE(response["message_type"].get<MessageType>() == MessageType::SERVER);
-    REQUIRE(response.contains("content"));
-    REQUIRE(response["content"].get<std::string>() == "your id");
-    REQUIRE(response["peer_id"].get<std::string>() == client->id());
+    REQUIRE(response["message_type"].template get<MessageType>() == MessageType::SERVER);
+    REQUIRE(response["content"].template get<std::string>() == "your id");
+    REQUIRE(response["peer_id"].template get<std::string>() == client->id());
 
     clients[client->id()] = client;
     // clients.emplace(client.id(), client);
@@ -54,7 +53,7 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
 
     REQUIRE(responses.size() == 1);
     auto &response = responses.front();
-    REQUIRE(response["message_type"].get<MessageType>() == MessageType::POSITION);
-    REQUIRE(response["content"][client->id()].get<float>() == Approx(0));
+    REQUIRE(response["message_type"].template get<MessageType>() == MessageType::POSITION);
+    REQUIRE(response["content"][client->id()].template get<float>() == Approx(0));
   }
 }
