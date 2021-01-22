@@ -280,7 +280,7 @@ namespace websocket_server
 
     log(spdlog::level::trace, fmt::color::yellow, "{}", parsed_data);
 
-    auto message_type = parsed_data.at("message_type").get<MessageType>();
+    auto message_type = parsed_data.at(message_type_key).get<MessageType>();
 
     auto room_id = parsed_data.at("code").get<room_id_type>();
 
