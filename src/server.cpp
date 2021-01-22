@@ -315,9 +315,8 @@ namespace websocket_server
         auto y = position.contains("y") ? position.at("y").get<ClientInfo::position_value_type>() : 0.f;
         auto z = position.contains("z") ? position.at("z").get<ClientInfo::position_value_type>() : 0.f;
 
-        json volume_update = {{peer_id_key, current_client.id()},
-                              {message_type_key, to_string(MessageType::VOLUME)},
-                              {data_key, {{"volume", 0.f}}}};
+        json volume_update = {
+            {peer_id_key, current_client.id()}, {message_type_key, MessageType::VOLUME}, {data_key, {{"volume", 0.f}}}};
 
         log(spdlog::level::trace, fmt::color::yellow, "{}", volume_update);
 
@@ -355,7 +354,7 @@ namespace websocket_server
           const auto &peer_client = client_mapping_.at(peer);
           if (peer_client.id() == peer_id)
           {
-            json outbound_message = {{message_type_key, to_string(MessageType::POSITION)},
+            json outbound_message = {{message_type_key, MessageType::POSITION},
                                      {data_key, {{peer_id, peer_client.distance(current_client)}}}};
             handle->send(outbound_message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
             log(spdlog::level::trace, fmt::color::coral, "[{} -> {}] {}", current_client.id(), peer_id, outbound_message);
@@ -367,7 +366,7 @@ namespace websocket_server
       else
       {
         // send position of all peers to handle
-        json outbound_message = {{message_type_key, to_string(MessageType::POSITION)}, {data_key, json::object()}};
+        json outbound_message = {{message_type_key, MessageType::POSITION}, {data_key, json::object()}};
         auto &peer_positions  = outbound_message.at(data_key);
 
         for (auto peer : current_room)
@@ -382,10 +381,7 @@ namespace websocket_server
     }
     else
     {
-      log(spdlog::level::warn,
-          fmt::color::orange_red,
-          "unable to handle received message of type MessageType::{}",
-          to_string(message_type));
+      log(spdlog::level::warn, fmt::color::orange_red, "unable to handle received message of type MessageType::{}", message_type);
     }
   }
 
@@ -411,7 +407,7 @@ namespace websocket_server
 
       // notify client of their own UUID
       json client_reply_message = {
-          {peer_id_key, client_mapping_[handle].id()}, {message_type_key, to_string(MessageType::SERVER)}, {data_key, "your id"}};
+          {peer_id_key, client_mapping_[handle].id()}, {message_type_key, MessageType::SERVER}, {data_key, "your id"}};
       handle->send(client_reply_message.dump(), uWS::OpCode::TEXT, compress_outgoing_messages);
 
       auto uuid = client_mapping_[handle].id();
@@ -432,7 +428,7 @@ namespace websocket_server
     const auto client_uuid = client.id();
     const auto room_id     = client.room();
 
-    json message = {{uuid_key, client_uuid}, {message_type_key, to_string(MessageType::SERVER)}, {data_key, delete_message}};
+    json message = {{uuid_key, client_uuid}, {message_type_key, MessageType::SERVER}, {data_key, delete_message}};
 
     auto &current_room = rooms_.at(room_id);
     current_room.erase(handle);
