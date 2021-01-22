@@ -1,5 +1,6 @@
 #include "mock_server.hpp"
 
+#include <cmath>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
