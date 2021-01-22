@@ -34,6 +34,9 @@ namespace websocket_server
       void open();
       std::vector<nlohmann::json> send(const nlohmann::json &j);
 
+      std::vector<nlohmann::json> get_message_queue();
+      void clear_message_queue();
+
       void *getUserData() override;
       bool send(MockServer::message_view_type message, uWS::OpCode opCode = uWS::OpCode::BINARY, bool compress = false) override;
 

@@ -17,14 +17,7 @@ namespace websocket_server::mock
     auto outbound = j.dump();
     server_.send(*this, outbound);
 
-    std::vector<nlohmann::json> results;
-    results.reserve(messages_.size());
-    while (!messages_.empty())
-    {
-      results.push_back(nlohmann::json::parse(messages_.front()));
-      messages_.pop();
-    }
-    return results;
+    return get_message_queue();
   }
 
   void *MockClient::getUserData()
@@ -36,6 +29,24 @@ namespace websocket_server::mock
   {
     messages_.push(std::string{message});
     return true;
+  }
+
+  std::vector<nlohmann::json> MockClient::get_message_queue()
+  {
+    std::vector<nlohmann::json> results;
+    results.reserve(messages_.size());
+    while (!messages_.empty())
+    {
+      results.push_back(nlohmann::json::parse(messages_.front()));
+      messages_.pop();
+    }
+    return results;
+  }
+
+  void MockClient::clear_message_queue()
+  {
+    decltype(messages_) empty;
+    std::swap(empty, messages_);
   }
 
   ClientInfo::client_id_type MockClient::id()
