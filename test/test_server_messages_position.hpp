@@ -1,6 +1,5 @@
 #include "mock_server.hpp"
 
-#include <cmath>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -57,7 +56,7 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
     REQUIRE(responses.size() == 1);
     auto &response = responses.front();
     REQUIRE(response["message_type"].template get<MessageType>() == MessageType::POSITION);
-    REQUIRE(response["content"][client->id()].template get<float>() == Approx(0));
+    REQUIRE(response["content"][client->id()].template get<double>() == Approx(0));
   }
 
   SECTION("multiple client positions")
@@ -72,7 +71,7 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
       client->clear_message_queue();
     }
 
-    std::array<std::tuple<float, float, float>, 4> positions;
+    std::array<std::tuple<double, double, double>, 4> positions;
     positions[0] = {0, 0, 0};
     positions[1] = {1, 1, 1};
     positions[2] = {-1, -1, -1};
@@ -80,17 +79,17 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
 
     std::array<std::string, 4> client_ids;
     std::transform(clients.begin(), clients.end(), client_ids.begin(), [](auto pair) { return pair.first; });
-    std::array<std::array<float, 4>, 4> distances = {{{{0, std::sqrtf(3), std::sqrtf(3), std::sqrtf(405)}},
-                                                      {{std::sqrtf(3), 0, std::sqrtf(12), std::sqrtf(362)}},
-                                                      {{std::sqrtf(3), std::sqrtf(12), 0, std::sqrtf(454)}},
-                                                      {{std::sqrtf(405), std::sqrtf(362), std::sqrtf(454), 0}}}};
-    std::array<std::array<float, 4>, 4> volumes   = {
-        {{{1, 1 / (std::sqrtf(3) * std::sqrtf(3)), 1 / (std::sqrtf(3) * std::sqrtf(3)), 1 / (std::sqrtf(405) * std::sqrtf(405))}},
-         {{1 / (std::sqrtf(3) * std::sqrtf(3)), 1, 1 / (std::sqrtf(12) * std::sqrtf(12)), 1 / (std::sqrtf(362) * std::sqrtf(362))}},
-         {{1 / (std::sqrtf(3) * std::sqrtf(3)), 1 / (std::sqrtf(12) * std::sqrtf(12)), 1, 1 / (std::sqrtf(454) * std::sqrtf(454))}},
-         {{1 / (std::sqrtf(405) * std::sqrtf(405)),
-           1 / (std::sqrtf(362) * std::sqrtf(362)),
-           1 / (std::sqrtf(454) * std::sqrtf(454)),
+    std::array<std::array<double, 4>, 4> distances = {{{{0, std::sqrt(3), std::sqrt(3), std::sqrt(405)}},
+                                                      {{std::sqrt(3), 0, std::sqrt(12), std::sqrt(362)}},
+                                                      {{std::sqrt(3), std::sqrt(12), 0, std::sqrt(454)}},
+                                                      {{std::sqrt(405), std::sqrt(362), std::sqrt(454), 0}}}};
+    std::array<std::array<double, 4>, 4> volumes   = {
+        {{{1, 1 / (std::sqrt(3) * std::sqrt(3)), 1 / (std::sqrt(3) * std::sqrt(3)), 1 / (std::sqrt(405) * std::sqrt(405))}},
+         {{1 / (std::sqrt(3) * std::sqrt(3)), 1, 1 / (std::sqrt(12) * std::sqrt(12)), 1 / (std::sqrt(362) * std::sqrt(362))}},
+         {{1 / (std::sqrt(3) * std::sqrt(3)), 1 / (std::sqrt(12) * std::sqrt(12)), 1, 1 / (std::sqrt(454) * std::sqrt(454))}},
+         {{1 / (std::sqrt(405) * std::sqrt(405)),
+           1 / (std::sqrt(362) * std::sqrt(362)),
+           1 / (std::sqrt(454) * std::sqrt(454)),
            1}}}};
 
     std::vector<nlohmann::json> responses;
@@ -118,7 +117,7 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
       auto idx_jj = std::distance(client_ids.begin(), std::find(client_ids.begin(), client_ids.end(), id_jj));
 
       REQUIRE(response["message_type"].template get<MessageType>() == MessageType::VOLUME);
-      REQUIRE(response["content"]["volume"].template get<float>() == Approx(volumes[idx_ii][idx_jj]));
+      REQUIRE(response["content"]["volume"].template get<double>() == Approx(volumes[idx_ii][idx_jj]));
     }
 
     // check all positions
@@ -132,7 +131,7 @@ TEST_CASE("send/receive MessageType::POSITION", "[Server,POSITION]")
       auto idx_client = std::distance(client_ids.begin(), std::find(client_ids.begin(), client_ids.end(), client_ids.back()));
       auto idx_peer   = std::distance(client_ids.begin(), std::find(client_ids.begin(), client_ids.end(), id_peer));
 
-      REQUIRE(response["content"][id_peer].template get<float>() == Approx(distances[idx_client][idx_peer]));
+      REQUIRE(response["content"][id_peer].template get<double>() == Approx(distances[idx_client][idx_peer]));
     }
   }
 }
