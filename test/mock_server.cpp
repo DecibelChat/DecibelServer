@@ -32,7 +32,7 @@ namespace websocket_server::mock
     return static_cast<void *>(&user_data_);
   }
 
-  bool MockClient::send(WSS::message_view_type message, uWS::OpCode opCode, bool compress)
+  bool MockClient::send(MockServer::message_view_type message, uWS::OpCode opCode, bool compress)
   {
     messages_.push(std::string{message});
     return true;

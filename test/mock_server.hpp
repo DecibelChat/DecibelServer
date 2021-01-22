@@ -35,12 +35,12 @@ namespace websocket_server
       std::vector<nlohmann::json> send(const nlohmann::json &j);
 
       void *getUserData() override;
-      bool send(WSS::message_view_type message, uWS::OpCode opCode = uWS::OpCode::BINARY, bool compress = false) override;
+      bool send(MockServer::message_view_type message, uWS::OpCode opCode = uWS::OpCode::BINARY, bool compress = false) override;
 
       ClientInfo::client_id_type id();
 
     private:
-      WSS::user_data_type user_data_;
+      MockServer::user_data_type user_data_;
       MockServer &server_;
 
       std::queue<MockServer::message_type> messages_;
