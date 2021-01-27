@@ -36,3 +36,11 @@ file(READ ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/uWebSockets/src/WebSocket.h
 string(REPLACE "    void *getUserData()" "    virtual void *getUserData()" file_data "${file_data}")
 string(REPLACE "    bool send(" "    virtual bool send(" file_data "${file_data}")
 file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/uWebSockets/src/WebSocket.h "${file_data}")
+
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/uWebSockets/uSockets/src/eventing/libuv.c file_data)
+string(REPLACE 
+  "    if (!loop->is_default) {\n        uv_run(loop->uv_loop, UV_RUN_NOWAIT);\n        uv_loop_delete(loop->uv_loop);\n    }"
+  "    if (!loop->is_default) {\n        // uv_run(loop->uv_loop, UV_RUN_NOWAIT);\n        // uv_loop_delete(loop->uv_loop);\n    }" 
+  file_data 
+  "${file_data}")
+file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/uWebSockets/uSockets/src/eventing/libuv.c "${file_data}")
