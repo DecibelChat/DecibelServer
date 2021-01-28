@@ -51,7 +51,7 @@ namespace websocket_server
 
     void start();
 
-  private:
+  protected:
     using server_backend_type = uWS::TemplatedApp<using_TLS>;
     using socket_type         = uWS::WebSocket<using_TLS, true>;
     using message_type        = std::string;
@@ -67,7 +67,7 @@ namespace websocket_server
 
     static user_data_type &user_data(connection_type handle);
 
-  private:
+  protected:
     struct connection_comparator
     {
       bool operator()(const connection_type &lhs, const connection_type &rhs) const
@@ -81,7 +81,7 @@ namespace websocket_server
     using room_type            = std::set<connection_type, connection_comparator>;
     using rooms_container_type = std::unordered_map<room_id_type, room_type>;
 
-  private:
+  protected:
 #ifdef __cpp_lib_jthread
     using thread_type = std::jthread;
 #else
@@ -95,9 +95,13 @@ namespace websocket_server
 
     void message_handler(connection_type handle, message_view_type message);
 
+    /* room bookkeeping */
     std::pair<room_type::iterator, bool> add_client_to_room(const room_id_type &room_id, connection_type handle);
     void remove_client_from_room(connection_type handle);
     bool close_if_empty(const room_id_type &room_id);
+
+    /* room environment handling */
+    float calculate_volume(client_type::position_value_type distance) const;
 
     void http_handler(connection_type handle);
 

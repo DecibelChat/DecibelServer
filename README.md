@@ -12,9 +12,12 @@ A C++20 capable compiler is required. Currently, the following should be able to
 - [cmake](https://cmake.org/)
 
 #### Third Party Libraries
+- [catch2](https://github.com/catchorg/Catch2) - Testing Only
 - [cxxopts](https://github.com/jarro2783/cxxopts)
 - [fmt](https://github.com/fmtlib/fmt)
+- [magic_enum](https://github.com/Neargye/magic_enum)
 - [nlohmann_json](https://github.com/nlohmann/json)
+- [spdlog](https://github.com/gabime/spdlog)
 - [µWebSockets](https://github.com/uNetworking/uWebSockets)
   - [µSockets](https://github.com/uNetworking/uSockets)
     - [libuv](https://github.com/libuv/libuv)

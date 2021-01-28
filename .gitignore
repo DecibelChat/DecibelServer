@@ -2,6 +2,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,c++,code
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,c++,code
 
+### MSVC ###
+*.runsettings
+
 ### C++ ###
 build/
 

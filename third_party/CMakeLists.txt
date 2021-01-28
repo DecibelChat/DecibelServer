@@ -3,14 +3,17 @@
 set(uWebSockets_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/uWebSockets)
 set(uSockets_ROOT ${uWebSockets_ROOT}/uSockets)
 
-option(USE_OPENSSL             "Build networking backend with OpenSSL"                   ON)
-option(USE_WOLFSSL             "Build networking backend with WolfSSL"                   OFF)
-option(USE_LIBUV               "Build networking backend with libuv as event-loop"       ON)
-option(USE_GCD                 "Build networking backend with libdispatch as event-loop" OFF)
-option(USE_ZLIB                "Build networking backend with zlib compression enabled"  ON)
-option(BUILD_WITH_PROXY        "Build networking backend with PROXY Protocol v2 support" OFF)
-option(BUILD_VENDORED_EXAMPLES "Build examples for networking backend"                   OFF)
-option(BUILD_VENDORED_TESTS    "Build tests for networking backend"                      OFF)
+option(USE_OPENSSL             "Build networking backend with OpenSSL"                    ON)
+option(USE_WOLFSSL             "Build networking backend with WolfSSL"                    OFF)
+option(USE_LIBUV               "Build networking backend with libuv as event-loop"        ON)
+option(USE_GCD                 "Build networking backend with libdispatch as event-loop"  OFF)
+option(USE_EPOLL               "Build networking backend with epoll as event-loop"        OFF)
+option(USE_KQUEUE              "Build networking backend with kqueue as event-loop"       OFF)
+option(USE_ZLIB                "Build networking backend with zlib compression enabled"   ON)
+option(BUILD_WITH_PROXY        "Build networking backend with PROXY Protocol v2 support"  OFF)
+option(BUILD_VENDORED_EXAMPLES "Build examples for networking backend"                    OFF)
+option(BUILD_VENDORED_TESTS    "Build tests for networking backend"                       OFF)
+option(MOCK_VENDOR             "Build networking backend with mocking for sockets"        OFF)
 
 ##################### uSockets #####################
 list(APPEND uSockets_sources
@@ -18,14 +21,6 @@ list(APPEND uSockets_sources
   ${uSockets_ROOT}/src/context.c
   ${uSockets_ROOT}/src/loop.c
   ${uSockets_ROOT}/src/socket.c
-
-  ${uSockets_ROOT}/src/crypto/openssl.c
-  ${uSockets_ROOT}/src/crypto/sni_tree.cpp
-  ${uSockets_ROOT}/src/crypto/wolfssl.c
-
-  ${uSockets_ROOT}/src/eventing/epoll_kqueue.c
-  ${uSockets_ROOT}/src/eventing/gcd.c
-  ${uSockets_ROOT}/src/eventing/libuv.c
 )
 
 list(APPEND uSockets_headers
@@ -89,30 +84,82 @@ elseif (USE_OPENSSL)
       PRIVATE
         LIBUS_USE_OPENSSL
     )
+    target_sources(uSockets
+      PUBLIC
+        ${uSockets_ROOT}/src/crypto/openssl.c
+        ${uSockets_ROOT}/src/crypto/sni_tree.cpp
+    )
 elseif (USE_WOLFSSL)
+    target_sources(uSockets
+      PUBLIC
+        ${uSockets_ROOT}/src/crypto/sni_tree.cpp
+        ${uSockets_ROOT}/src/crypto/wolfssl.c
+    )
     message(FATAL_ERROR "WolfSSL backend not yet supported")
 else()
-    message(FATAL_ERROR "Neither USE_OPENSSL nor USE_WOLFSSL are true. One options MUST be true.")
-endif()
-
-
-if (USE_LIBUV AND USE_GCD)
-    message(FATAL_ERROR "USE_LIBUV and USE_GCD are mutally exclusive. Both cannot be enabled at the same time!")
-elseif (USE_LIBUV)
-    find_conan_package(libuv)
-    target_link_libraries(uSockets
-      PRIVATE
-        libuv::libuv
-    )
     target_compile_definitions(uSockets
       PRIVATE
-        LIBUS_USE_LIBUV
+        LIBUS_NO_SSL
     )
-elseif (USE_GCD)
-    message(FATAL_ERROR "libdispatch backend not yet supported")
-else()
-    message(FATAL_ERROR "Neither USE_LIBUV nor USE_GCD are true. One options MUST be true.")
 endif()
+
+
+if (MOCK_VENDOR)
+  if (BUILD_VENDORED_EXAMPLES)
+    message(FATAL_ERROR "BUILD_VENDORED_EXAMPLES and MOCK_VENDOR are both enabled. uWebSockets examples do not compile with mocked uSocket as of commit 359c26b")
+  endif (BUILD_VENDORED_EXAMPLES)
+  target_sources(uSockets
+    PUBLIC
+      ${uWebSockets_ROOT}/fuzzing/uSocketsMock.c
+  )
+  if (MSVC)
+    message(FATAL_ERROR "Option MOCK_VENDOR enabled, but mocked uSockets does not currently support it.")
+  endif (MSVC)
+else()
+  if (USE_LIBUV AND USE_GCD)
+      message(FATAL_ERROR "USE_LIBUV and USE_GCD are mutally exclusive. Both cannot be enabled at the same time!")
+  elseif (USE_LIBUV)
+      target_sources(uSockets
+        PUBLIC
+          ${uSockets_ROOT}/src/eventing/libuv.c
+      )
+      find_conan_package(libuv)
+      target_link_libraries(uSockets
+        PUBLIC
+          libuv::libuv
+      )
+      target_compile_definitions(uSockets
+        PRIVATE
+          LIBUS_USE_LIBUV
+      )
+  elseif (USE_GCD)
+      target_sources(uSockets
+        PUBLIC
+          ${uSockets_ROOT}/src/eventing/gcd.c
+      )
+      message(FATAL_ERROR "libdispatch backend not yet supported")
+  elseif (USE_EPOLL)
+      target_sources(uSockets
+        PUBLIC
+          ${uSockets_ROOT}/src/eventing/epoll_kqueue.c
+      )
+      target_compile_definitions(uSockets
+        PRIVATE
+          LIBUS_USE_EPOLL
+      )
+  elseif (USE_KQUEUE)
+      target_sources(uSockets
+        PUBLIC
+          ${uSockets_ROOT}/src/eventing/epoll_kqueue.c
+      )
+      target_compile_definitions(uSockets
+        PRIVATE
+          LIBUS_USE_KQUEUE
+      )
+  else()
+      message(FATAL_ERROR "One of the following options MUST be true [USE_LIBUV, USE_GCD, USE_EPOLL, USE_KQUEUE]")
+  endif()
+endif (MOCK_VENDOR)
 
 if (BUILD_VENDORED_EXAMPLES)
     foreach(example_file IN LISTS uSockets_examples_sources)
@@ -181,6 +228,7 @@ list(APPEND uWebSockets_examples_sources
 
 list(APPEND uWebSockets_tests_sources
   ${uWebSockets_ROOT}/tests/BloomFilter.cpp
+  ${uWebSockets_ROOT}/tests/ExtensionsNegotiator.cpp
   ${uWebSockets_ROOT}/tests/HttpRouter.cpp
   # ${uWebSockets_ROOT}/tests/TopicTree.cpp # Library author does not actually build/test this
 )
