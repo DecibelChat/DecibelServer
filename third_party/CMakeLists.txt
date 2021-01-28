@@ -105,12 +105,15 @@ endif()
 
 
 if (MOCK_VENDOR)
+  if (BUILD_VENDORED_EXAMPLES)
+    message(FATAL_ERROR "BUILD_VENDORED_EXAMPLES and MOCK_VENDOR are both enabled. uWebSockets examples do not compile with mocked uSocket as of commit 359c26b")
+  endif (BUILD_VENDORED_EXAMPLES)
   target_sources(uSockets
     PUBLIC
       ${uWebSockets_ROOT}/fuzzing/uSocketsMock.c
   )
   if (MSVC)
-    message(FATAL_ERROR "Option MOCK_VENDOR enabled, but mocked uSockets does not compile on MSVC.")
+    message(FATAL_ERROR "Option MOCK_VENDOR enabled, but mocked uSockets does not currently support it.")
   endif (MSVC)
 else()
   if (USE_LIBUV AND USE_GCD)
